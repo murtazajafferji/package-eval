@@ -2,9 +2,9 @@
 
 ## About this app
 
-This app creates a dashboard to visualize medical provider charges/costs from US hospitals and clinics.
+This app creates a dashboard to compare open source packages over various metrics.
 
-Data is supplied by libraries.io
+Data is supplied by libraries.io.
 
 A live demo is available at [http://package-eval.herokuapp.com/](http://package-eval.herokuapp.com/)
 
