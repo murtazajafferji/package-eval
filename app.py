@@ -5,6 +5,7 @@ import dash_html_components as html
 import plotly.graph_objs as go
 from dash.dependencies import State, Input, Output
 from dash.exceptions import PreventUpdate
+import plotly.express as px
 
 import pandas as pd
 import os
@@ -18,6 +19,7 @@ import json
 from networkx.readwrite import json_graph
 import igraph as ig
 import uuid
+
 
 class Libraries:
     def __init__(self, api_file_path='./api.txt'):
@@ -60,7 +62,7 @@ class Libraries:
             self.url = 'https://libraries.io/api/search?q={}'.format(package)
             self.get_response()
             results = self.r.json()
-            results.sort(key=lambda x: x.get('stars'), reverse=True)
+            # results.sort(key=lambda x: x.get('stars'), reverse=True)
             filtered_results = list(filter(lambda obj: obj['name'] == package, results))
             self.json = filtered_results[0] if len(filtered_results) > 0 else results[0]
             del self.json['versions']
@@ -72,7 +74,7 @@ class Libraries:
 
     def get_dependencies(self, obj):
         if obj['name'] not in self.dependency_cache:
-            self.url = 'https://libraries.io/api/{}/{}/{}/tree'.format(obj['platform'], obj['name'], obj['latest_stable_release_number'] or obj['latest_release_number'])
+            self.url = 'https://libraries.io/api/{}/{}/latest/tree'.format(obj['platform'], obj['name'])
             self.get_response()
             self.json = self.r.json()
             self.dependency_cache[obj['name']] = self.json
@@ -95,7 +97,8 @@ server = app.server
 
 app.config["suppress_callback_exceptions"] = True
 
-libraries = ['seaborn', 'bokeh', 'dash', 'plotly', 'ggplot', 'altair', 'matplotlib', 'pillow', 'jinja2', 'scipy', 'google-cloud-storage', 'redcarpet', 'django']
+# libraries = ['netflix-migrate', 'kafka-streams', 'vega']
+libraries = ['netflix-migrate', 'kafka-streams', 'vega', 'seaborn', 'bokeh', 'dash', 'plotly', 'ggplot', 'altair', 'matplotlib', 'pillow', 'jinja2', 'scipy', 'google-cloud-storage', 'redcarpet', 'django']
 measures = ['rank', 'stars', 'dependents_count', 'dependent_repos_count', 'forks']
 
 library_data = []
@@ -116,7 +119,7 @@ def build_upper_left_panel():
                     html.Div(
                         id="library-select-dropdown-outer",
                         children=dcc.Dropdown(
-                            id="library-select", multi=True, searchable=True, style={'color': '#FFF'}, value=libraries[:4], options=[{"label": i, "value": i} for i in libraries] 
+                            id="library-select", multi=True, searchable=True, style={'color': '#FFF'}, value=libraries[:4], options=get_library_options()
                         ),
                     ),
                     html.Label("Select measures"),
@@ -145,6 +148,11 @@ def build_upper_left_panel():
             ),
         ],
     )
+
+
+def get_library_options():
+    return [{"label": i, "value": i} for i in libraries]
+
 
 def get_palette(size):
     '''Get the suitable palette of a certain size'''
@@ -242,6 +250,10 @@ def get_edge_trace(x, y, linecolor='rgb(210,210,210)', linewidth=1):
                )
 
 def generate_dependency_graph(selected_libraries):
+    for package in selected_libraries:
+        data = lib.get_package(package=package)
+        library_data.append(data)
+
     graphs = []
     for package_name in selected_libraries:
         package = next(x for x in library_data if x['name'] == package_name)
@@ -418,6 +430,27 @@ app.layout = html.Div(
     ],
 )
 
+
+@app.callback(
+    dash.dependencies.Output("library-select", "options"),
+    [dash.dependencies.Input("library-select", "search_value")],
+    [dash.dependencies.State("library-select", "value")],
+)
+def update_multi_options(search_value, value):
+    if not search_value:
+        raise PreventUpdate
+    res = requests.get("https://libraries.io/api/search?q={lib_name}&sort=stars".format(lib_name=search_value)).json()
+    new_libraries = [r["name"] for r in res]
+
+    exact_search = requests.get('https://libraries.io/api/search?q={}'.format(search_value)).json()
+    if search_value in [r["name"] for r in exact_search]:
+        new_libraries.append(search_value)
+
+    all_libraries = list(set(value + new_libraries))
+    all_libraries.sort(key=len)
+    all_values = [{"label": r, "value": r} for r in all_libraries]
+    return all_values
+
 @app.callback(
     Output("measure-select", "value"),
     [Input("measure-select", "options"), Input("measure-select-all", "value")],
@@ -470,10 +503,7 @@ def update_libraries_table(library_select):
         "description"
     ]
 
-    data_list = []
-    for package in library_select:
-        data = lib.get_package(package=package)
-        data_list.append(data)
+    data_list = update_libraries(library_select)
 
     return dash_table.DataTable(
         id="libraries-table",
@@ -485,6 +515,15 @@ def update_libraries_table(library_select):
         style_as_list_view=False,
         style_header={"background-color": "#1f2536", "padding": "0px 5px"}
     )
+
+
+def update_libraries(library_select):
+    data_list = []
+    for package in library_select:
+        data = lib.get_package(package=package)
+        data_list.append(data)
+    return data_list
+
 
 @app.callback(
     Output("parallel-coordinates", "figure"),
@@ -504,6 +543,7 @@ def update_parallel_coordinates(library_select, measure_select):
     ],
 )
 def update_dependency_graph(selected_libraries):
+    update_libraries(selected_libraries)
     return generate_dependency_graph(
         selected_libraries
     )
