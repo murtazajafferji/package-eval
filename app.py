@@ -6,7 +6,7 @@ import plotly.graph_objs as go
 from dash.dependencies import State, Input, Output
 from dash.exceptions import PreventUpdate
 import plotly.express as px
-
+import time
 import pandas as pd
 import os
 import networkx as nx
@@ -22,6 +22,7 @@ import uuid
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
+from LRUCache import LRUCache
 from TimeoutHTTPAdapter import TimeoutHTTPAdapter
 
 http = requests.Session()
@@ -48,7 +49,8 @@ class Libraries:
 
         self.dependency_cache = {}
         self.library_cache = {}
-        
+        self.response_caches = LRUCache(150)
+
         return
     
     def load_api_key(self):
@@ -65,7 +67,14 @@ class Libraries:
         return
     
     def get_response(self):
-        self.r = get_response(self.url, self.payload)
+        self.r = self.get_response_for_payload(self.url)
+
+    def get_response_for_payload(self, url):
+        resp = self.response_caches.get(url)
+        if resp is None:
+            resp = get_response(url, self.payload)
+            self.response_caches.put(url, resp)
+        return resp
 
     def get_package(self, package='requests'):
         if package not in self.library_cache:
@@ -106,6 +115,7 @@ def get_response(url, payload=None):
         except Exception as e:
             print(e)
             counter = counter + 1
+            time.sleep(100)
     raise Exception("No response from libraries.io inspite of multiple calls")
 
 app = dash.Dash(
@@ -139,7 +149,7 @@ def build_upper_left_panel():
             html.Div(
                 id="library-select-outer",
                 children=[
-                    html.Label("Select libraries"),
+                    html.Label("Select libraries", style={'color': '#FFF'}),
                     html.Div(
                         id="library-select-dropdown-outer",
                         children=dcc.Dropdown(
@@ -474,11 +484,11 @@ def update_multi_options(search_value, value):
     try:
         if len(search_value) < 3:
             return [{"label": i, "value": i} for i in libraries]
-        req_url = "https://libraries.io/api/search?q={lib_name}&sort=stars".format(lib_name=search_value)
-        res = get_response(req_url).json()
+        req_url = "https://libraries.io/api/search?q={lib_name}&sort=stars&per_page=5".format(lib_name=search_value)
+        res = lib.get_response_for_payload(req_url).json()
         new_libraries = [r["name"] for r in res]
-        search_url = 'https://libraries.io/api/search?q={}'.format(search_value)
-        exact_search = get_response(search_url).json()
+        search_url = 'https://libraries.io/api/search?q={}&per_page=3'.format(search_value)
+        exact_search = lib.get_response_for_payload(search_url).json()
         if search_value in [r["name"] for r in exact_search]:
             new_libraries.append(search_value)
         all_libraries = list(set(value + new_libraries))
