@@ -19,6 +19,18 @@ import json
 from networkx.readwrite import json_graph
 import igraph as ig
 import uuid
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
+from TimeoutHTTPAdapter import TimeoutHTTPAdapter
+
+http = requests.Session()
+
+retries = Retry(total=4, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+adapter = TimeoutHTTPAdapter(max_retries=retries)
+http.mount("http://", adapter)
+
+http.mount("https://", adapter)
 
 
 class Libraries:
@@ -53,10 +65,8 @@ class Libraries:
         return
     
     def get_response(self):
-        self.r = requests.get(self.url, params=self.payload)
-        print(self.r.url)
-        return
-    
+        self.r = get_response(self.url, self.payload)
+
     def get_package(self, package='requests'):
         if package not in self.library_cache:
             self.url = 'https://libraries.io/api/search?q={}'.format(package)
@@ -83,6 +93,20 @@ class Libraries:
 
 lib = Libraries()
 lib.init_api_key()
+
+
+def get_response(url, payload=None):
+    counter = 1
+    while counter < 10:
+        try:
+            r = requests.get(url, params=payload)
+            r.raise_for_status()
+            print(r.url)
+            return r
+        except Exception as e:
+            print(e)
+            counter = counter + 1
+    raise Exception("No response from libraries.io inspite of multiple calls")
 
 app = dash.Dash(
     __name__,
@@ -119,7 +143,8 @@ def build_upper_left_panel():
                     html.Div(
                         id="library-select-dropdown-outer",
                         children=dcc.Dropdown(
-                            id="library-select", multi=True, searchable=True, style={'color': '#FFF'}, value=libraries[:4], options=get_library_options()
+                            id="library-select", multi=True, searchable=True, style={'color': '#FFF'},
+                            value=libraries[:4], options=[{"label": i, "value": i} for i in libraries]
                         ),
                     ),
                     html.Label("Select measures"),
@@ -149,9 +174,6 @@ def build_upper_left_panel():
         ],
     )
 
-
-def get_library_options():
-    return [{"label": i, "value": i} for i in libraries]
 
 
 def get_palette(size):
@@ -199,7 +221,7 @@ def preorder_label_parent(tree_dict, labels=None, links=None):
     if labels is None:
         labels=list()
     if links is None:
-        links=[] 
+        links=[]
     parent_name = tree_dict['name']
     if parent_name not in labels:
         labels.append(parent_name)
@@ -208,7 +230,7 @@ def preorder_label_parent(tree_dict, labels=None, links=None):
             child['name'] = child['dependency']['project_name']
             links.append((parent_name, child['name']))
             preorder_label_parent(child, labels, links)
-        
+
     return labels, links
 
 def get_plotly_data(E, coords):
@@ -249,6 +271,10 @@ def get_edge_trace(x, y, linecolor='rgb(210,210,210)', linewidth=1):
                 hoverinfo='none'
                )
 
+
+tree_cache = {}
+
+
 def generate_dependency_graph(selected_libraries):
     for package in selected_libraries:
         data = lib.get_package(package=package)
@@ -286,7 +312,12 @@ def generate_dependency_graph(selected_libraries):
         # Create random graph
         #G = nx.random_geometric_graph(200, 0.125)
         # print(dependencies)
-        pre_labels, pre_links = preorder_label_parent(package_with_dependencies)
+        if package_name not in tree_cache:
+            tree_cache[package_name] = preorder_label_parent(package_with_dependencies)
+
+        tree_graph = tree_cache[package_name]
+        # print(tree_graph)
+        pre_labels, pre_links = tree_graph[0], tree_graph[1]
         # print(pre_labels)
         # print(pre_links)
         # G = nx.DiGraph()
@@ -437,19 +468,26 @@ app.layout = html.Div(
     [dash.dependencies.State("library-select", "value")],
 )
 def update_multi_options(search_value, value):
+    all_values = None
     if not search_value:
         raise PreventUpdate
-    res = requests.get("https://libraries.io/api/search?q={lib_name}&sort=stars".format(lib_name=search_value)).json()
-    new_libraries = [r["name"] for r in res]
+    try:
+        if len(search_value) < 3:
+            return [{"label": i, "value": i} for i in libraries]
+        req_url = "https://libraries.io/api/search?q={lib_name}&sort=stars".format(lib_name=search_value)
+        res = get_response(req_url).json()
+        new_libraries = [r["name"] for r in res]
+        search_url = 'https://libraries.io/api/search?q={}'.format(search_value)
+        exact_search = get_response(search_url).json()
+        if search_value in [r["name"] for r in exact_search]:
+            new_libraries.append(search_value)
+        all_libraries = list(set(value + new_libraries))
+        all_libraries.sort(key=len)
+        all_values = [{"label": r, "value": r} for r in all_libraries]
 
-    exact_search = requests.get('https://libraries.io/api/search?q={}'.format(search_value)).json()
-    if search_value in [r["name"] for r in exact_search]:
-        new_libraries.append(search_value)
-
-    all_libraries = list(set(value + new_libraries))
-    all_libraries.sort(key=len)
-    all_values = [{"label": r, "value": r} for r in all_libraries]
-    return all_values
+    except Exception as e:
+        print(e)
+    return all_values or [{"label": i, "value": i} for i in libraries]
 
 @app.callback(
     Output("measure-select", "value"),
