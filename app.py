@@ -33,7 +33,6 @@ http.mount("http://", adapter)
 
 http.mount("https://", adapter)
 
-
 class Libraries:
     def __init__(self, api_file_path='./api.txt'):
         
@@ -227,21 +226,23 @@ def generate_parallel_coordinates(library_select, measure_select):
 
     return {"data": [data], "layout": layout}
 
-def preorder_label_parent(tree_dict, labels=None, links=None):
-    if labels is None:
-        labels=list()
+def preorder_label_parent(parent, is_tree=False, node_list=None, links=None):
+    if node_list is None:
+        node_list=list()
     if links is None:
-        links=[]
-    parent_name = tree_dict['name']
-    if parent_name not in labels:
-        labels.append(parent_name)
-    if 'dependencies' in tree_dict:
-        for child in tree_dict.get('dependencies'):
+        links=[] 
+    if 'id' not in parent:
+        parent['id'] = parent['name'] if not is_tree else str(uuid.uuid4())
+    if next((x for x in node_list if x['id'] == parent['id']), None) is None:
+        node_list.append(parent)
+    if 'dependencies' in parent:
+        for child in parent.get('dependencies'):
             child['name'] = child['dependency']['project_name']
-            links.append((parent_name, child['name']))
-            preorder_label_parent(child, labels, links)
-
-    return labels, links
+            child['id'] = child['name'] if not is_tree else str(uuid.uuid4())
+            links.append((parent['id'], child['id']))
+            preorder_label_parent(child, is_tree, node_list, links)
+        
+    return node_list, links
 
 def get_plotly_data(E, coords):
     # E is the list of tuples representing the graph edges
@@ -282,8 +283,7 @@ def get_edge_trace(x, y, linecolor='rgb(210,210,210)', linewidth=1):
                )
 
 
-tree_cache = {}
-
+dendency_graph_cache = {}
 
 def generate_dependency_graph(selected_libraries):
     for package in selected_libraries:
@@ -295,48 +295,15 @@ def generate_dependency_graph(selected_libraries):
         package = next(x for x in library_data if x['name'] == package_name)
         package_with_dependencies = lib.get_dependencies(package)
         package_with_dependencies['name'] = package_name
-        # procedure_data = raw_data[
-        #     raw_data["Hospital Referral Region (HRR) Description"].isin(library_select)
-        # ].reset_index()
+        if package_name not in dendency_graph_cache:
+            dendency_graph_cache[package_name] = preorder_label_parent(package_with_dependencies, True)
 
-        # traces = []
-        # selected_index = procedure_data[
-        #     procedure_data["Provider Name"].isin(provider_select)
-        # ].index
+        dendency_graph = dendency_graph_cache[package_name]
+        node_list, pre_links = dendency_graph[0], dendency_graph[1]
 
-        # text = (
-        #     procedure_data["Provider Name"]
-        #     + "<br>"
-        #     + "<b>"
-        #     + procedure_data["DRG Definition"].map(str)
-        #     + "/<b> <br>"
-        #     + "Average Procedure Cost: $ "
-        #     + procedure_data[cost_select].map(str)
-        # )
-
-        # hoverinfo="text",
-        # hovertext=text,
-        # selectedpoints=selected_index,
-        # hoveron="points",
-
-        # Create random graph
-        #G = nx.random_geometric_graph(200, 0.125)
-        # print(dependencies)
-        if package_name not in tree_cache:
-            tree_cache[package_name] = preorder_label_parent(package_with_dependencies)
-
-        tree_graph = tree_cache[package_name]
-        # print(tree_graph)
-        pre_labels, pre_links = tree_graph[0], tree_graph[1]
-        # print(pre_labels)
-        # print(pre_links)
-        # G = nx.DiGraph()
-        # G = nx.random_geometric_graph(200, 0.125)
-        # print(pre_labels)
         g = ig.Graph(directed=True)
-        g.add_vertices(pre_labels)
+        g.add_vertices([o['id'] for o in node_list])
         g.add_edges(pre_links)
-        #g = ig.Graph.Tree(400, 5)
         ig_layout = g.layout('rt_circular') #(rt is Reingold-Tilford layout algorithm)
         E = [e.tuple for e in g.es]
         Xn, Yn, Xe, Ye =get_plotly_data(E, ig_layout)
@@ -392,7 +359,7 @@ def generate_dependency_graph(selected_libraries):
                 hoverinfo='text')
         #trace1 = get_edge_trace(Xe, Ye)
         trace2 = get_node_trace(Xn, Yn, marker_size=5, marker_color='rgb(255,200,0)', 
-                            labels=pre_labels)
+                            labels=[o['name'] for o in node_list])
 
         graph = dcc.Graph(
             className="dependencies-graph",
