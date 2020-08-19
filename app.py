@@ -151,9 +151,11 @@ def build_upper_left_panel():
                     html.Label("Select libraries", style={'color': '#FFF'}),
                     html.Div(
                         id="library-select-dropdown-outer",
+                        style={'color': '#FFF'},
                         children=dcc.Dropdown(
                             id="library-select", multi=True, searchable=True, style={'color': '#FFF'},
-                            value=libraries[:4], options=[{"label": i, "value": i} for i in libraries]
+                            value=libraries[:4], options=[{"label": i, "value": i} for i in libraries],
+                            persistence_type="local", clearable=True
                         ),
                     ),
                     html.Label("Select measures"),

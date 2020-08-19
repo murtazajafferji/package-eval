@@ -65,6 +65,14 @@ body {
   font-size: 24px;
 }
 
+#library-select {
+  color: #FFF;
+}
+
+#measure-select {
+  color: #FFF;
+}
+
 *.Select-control, Select--single, .Select-multi-value-wrapper, .Select-value, .Select-value-label {
   background-color: #171b26 !important;
   color: #FFF;
