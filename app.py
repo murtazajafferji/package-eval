@@ -129,7 +129,7 @@ server = app.server
 app.config['suppress_callback_exceptions'] = True
 
 # packages = ['vega', 'seaborn', 'plotly', 'd3', 'dash', 'bokeh', 'netflix-migrate', 'kafka-streams', 'ggplot', 'altair', 'matplotlib', 'pillow', 'jinja2', 'scipy', 'google-cloud-storage', 'redcarpet', 'django']
-packages = ['vega', 'seaborn', 'plotly.js', 'dash', 'd3', 'matplotlib', 'ggplot', 'plotly', 'altair']
+packages = ['dash', 'plotly.js', 'vega', 'seaborn', 'd3', 'matplotlib', 'ggplot', 'plotly', 'altair']
 measures = ['stars', 'dependents_count', 'dependent_repos_count', 'forks']
 
 def get_palette(size):
@@ -170,6 +170,7 @@ def generate_parallel_coordinates(selected_packages, selected_measures):
         plot_bgcolor='#171b26',
         paper_bgcolor='#171b26',
         font_color='#FFF',
+        font_size=18,
         xaxis=dict(
             showticklabels=False
         ),
@@ -319,7 +320,7 @@ def generate_dependency_graph(selected_packages):
         width = 500
         height = 500
         layout = go.Layout(title=title,
-                        font= dict(size=12),
+                        font= dict(size=18),
                         showlegend=False,
                         autosize=False,
                         width=width,
