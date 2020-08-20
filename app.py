@@ -126,7 +126,7 @@ server = app.server
 app.config["suppress_callback_exceptions"] = True
 
 # packages = ['netflix-migrate', 'kafka-streams', 'vega']
-packages = ['netflix-migrate']
+packages = ['netflix-migrate', 'kafka-streams', 'vega', 'seaborn', 'bokeh', 'dash', 'plotly', 'ggplot', 'altair', 'matplotlib', 'pillow', 'jinja2', 'scipy', 'google-cloud-storage', 'redcarpet', 'django']
 
 package_data = []
 for package in packages:
