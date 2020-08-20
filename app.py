@@ -140,52 +140,6 @@ for package in packages:
     # print(data)
     package_data.append(data)
 
-def build_upper_left_panel():
-    return html.Div(
-        id="upper-left",
-        className="four columns",
-        children=[
-            html.Div(
-                id="package-select-outer",
-                children=[
-                    html.Label("Select packages", style={'color': '#FFF'}),
-                    html.Div(
-                        id="package-select-dropdown-outer",
-                        style={'color': '#FFF'},
-                        children=dcc.Dropdown(
-                            id="package-select", multi=True, searchable=True, style={'color': '#FFF'},
-                            value=packages[:4], options=[{"label": i, "value": i} for i in packages],
-                            persistence_type="local", clearable=True
-                        ),
-                    ),
-                    html.Label("Select measures"),
-                    html.Div(
-                        id="measure-checklist-container",
-                        children=dcc.Checklist(
-                            id="measure-select-all",
-                            options=[{"label": "Select All Measures", "value": "All"}],
-                            value=[],
-                        ),
-                    ),
-                    html.Div(
-                        id="measure-select-dropdown-outer",
-                        children=dcc.Dropdown(
-                            id="measure-select", multi=True, searchable=True, style={'color': '#FFF'}, value=measures[:4], options=get_measures()
-                        ),
-                    ),
-                    html.Div(
-                        id="table-upper",
-                        children=[
-                            html.P("Selected package details"),
-                            dcc.Loading(children=html.Div(id="packages-table-container", children=dash_table.DataTable(id='packages-table'))),
-                        ],
-                    )
-                ],
-            ),
-        ],
-    )
-
-
 def get_palette(size):
     '''Get the suitable palette of a certain size'''
     if size == 2:
@@ -400,7 +354,49 @@ app.layout = html.Div(
             id="upper-container",
             className="row",
             children=[
-                build_upper_left_panel(),
+                html.Div(
+                    id="upper-left",
+                    className="four columns",
+                    children=[
+                        html.Div(
+                            id="package-select-outer",
+                            children=[
+                                html.Label("Select packages", style={'color': '#FFF'}),
+                                html.Div(
+                                    id="package-select-dropdown-outer",
+                                    style={'color': '#FFF'},
+                                    children=dcc.Dropdown(
+                                        id="package-select", multi=True, searchable=True, style={'color': '#FFF'},
+                                        value=packages[:4], options=[{"label": i, "value": i} for i in packages],
+                                        persistence_type="local", clearable=True
+                                    ),
+                                ),
+                                html.Label("Select measures"),
+                                html.Div(
+                                    id="measure-checklist-container",
+                                    children=dcc.Checklist(
+                                        id="measure-select-all",
+                                        options=[{"label": "Select All Measures", "value": "All"}],
+                                        value=[],
+                                    ),
+                                ),
+                                html.Div(
+                                    id="measure-select-dropdown-outer",
+                                    children=dcc.Dropdown(
+                                        id="measure-select", multi=True, searchable=True, style={'color': '#FFF'}, value=measures[:4], options=get_measures()
+                                    ),
+                                ),
+                                html.Div(
+                                    id="table-upper",
+                                    children=[
+                                        html.P("Selected package details"),
+                                        dcc.Loading(children=html.Div(id="packages-table-container", children=dash_table.DataTable(id='packages-table'))),
+                                    ],
+                                )
+                            ],
+                        ),
+                    ],
+                ),
                 html.Div(
                     id="parallel-coordinates-outer",
                     className="eight columns",
@@ -430,7 +426,6 @@ app.layout = html.Div(
                     ],
                 ),
             ],
-
         ),
         html.Div(
             id="lower-container",
@@ -446,6 +441,18 @@ app.layout = html.Div(
                         children=[]
                     )
                 ],
+            )
+        )
+        ,
+        html.Div(
+            id="footer",
+            className="row",
+            children=html.Div(
+                className="twelve columns",
+                children=
+                    html.Div(
+                        children=["Powered by ", dcc.Link('Libraries.io', href='https://libraries.io/')]
+                    ),
             )
         )
     ],
