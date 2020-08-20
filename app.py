@@ -5,25 +5,20 @@ import dash_html_components as html
 import plotly.graph_objs as go
 from dash.dependencies import State, Input, Output
 from dash.exceptions import PreventUpdate
-import plotly.express as px
 import time
-import pandas as pd
 import os
-import networkx as nx
 
 import requests
 import pandas as pd
 import colorlover as cl
 import numpy as np
-import json
-from networkx.readwrite import json_graph
 import igraph as ig
 import uuid
-from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
 from LRUCache import LRUCache
 from TimeoutHTTPAdapter import TimeoutHTTPAdapter
+from controller.measures import measures, get_measures
 
 http = requests.Session()
 
@@ -131,8 +126,7 @@ server = app.server
 app.config["suppress_callback_exceptions"] = True
 
 # packages = ['netflix-migrate', 'kafka-streams', 'vega']
-packages = ['netflix-migrate', 'kafka-streams', 'vega', 'seaborn', 'bokeh', 'dash', 'plotly', 'ggplot', 'altair', 'matplotlib', 'pillow', 'jinja2', 'scipy', 'google-cloud-storage', 'redcarpet', 'django']
-measures = ['rank', 'stars', 'dependents_count', 'dependent_repos_count', 'forks']
+packages = ['netflix-migrate']
 
 package_data = []
 for package in packages:
@@ -170,7 +164,7 @@ def build_upper_left_panel():
                     html.Div(
                         id="measure-select-dropdown-outer",
                         children=dcc.Dropdown(
-                            id="measure-select", multi=True, searchable=True, style={'color': '#FFF'}, value=measures[:4], options=[{"label": i, "value": i} for i in measures]
+                            id="measure-select", multi=True, searchable=True, style={'color': '#FFF'}, value=measures[:4], options=get_measures()
                         ),
                     ),
                     html.Div(
@@ -184,7 +178,6 @@ def build_upper_left_panel():
             ),
         ],
     )
-
 
 
 def get_palette(size):
