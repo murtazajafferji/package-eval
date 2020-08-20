@@ -251,6 +251,20 @@ def get_edge_trace(x, y, linecolor='rgb(210,210,210)', linewidth=1):
 
 dendency_graph_cache = {}
 
+
+def get_package_tooltip(obj):
+    tool_tip = obj['name']
+    try:
+        js = obj['version']
+        name = "<B>Name:</B> {name}<BR>".format(name=obj['name']) if 'name' in obj else ""
+        version = "<B>Version:</B> {version}<BR>".format(version=js['number']) if 'number' in js else ""
+        lic = "<B>License:</B> {license}<BR>".format(license=js['original_license']) if 'original_license' in js else ""
+        updated = "<B>Updated:</B> {updated}<BR>".format(updated=js['updated_at']) if 'updated_at' in js else ""
+        tool_tip = name + version + lic + updated
+    except Exception as e:
+        print(e)
+    return tool_tip
+
 def generate_dependency_graph(selected_packages):
     for package in selected_packages:
         data = lib.get_package(package=package)
@@ -326,7 +340,7 @@ def generate_dependency_graph(selected_packages):
                 hoverinfo='text')
         #trace1 = get_edge_trace(Xe, Ye)
         trace2 = get_node_trace(Xn, Yn, marker_size=5, marker_color=palette[i], 
-                            labels=[o['name'] for o in node_list])
+                            labels=[get_package_tooltip(o) for o in node_list])
 
         graph = dcc.Graph(
             className="dependencies-graph",
