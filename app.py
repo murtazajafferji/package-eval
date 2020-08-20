@@ -246,7 +246,6 @@ def get_edge_trace(x, y, linecolor='rgb(210,210,210)', linewidth=1):
                 hoverinfo='none'
                )
 
-
 dendency_graph_cache = {}
 
 def generate_dependency_graph(selected_packages):
@@ -431,7 +430,8 @@ app.layout = html.Div(
             className='row',
             children=html.Div(
                 className='twelve columns',
-                children=[
+                children=dcc.Loading(
+                    children=[
                     html.P(
                         children='Dependency graphs',
                     ),
@@ -439,7 +439,7 @@ app.layout = html.Div(
                         id='dependency-graph-container',
                         children=[]
                     )
-                ],
+                ]),
             )
         )
         ,
@@ -456,7 +456,6 @@ app.layout = html.Div(
         )
     ],
 )
-
 
 @app.callback(
     dash.dependencies.Output('package-select', 'options'),
@@ -539,7 +538,7 @@ def update_packages_table(selected_packages):
         'description'
     ]
 
-    data_list = update_packages(selected_packages)
+    data_list = get_packages_data(selected_packages)
 
     return dash_table.DataTable(
         id='packages-table',
@@ -552,7 +551,7 @@ def update_packages_table(selected_packages):
         style_header={'background-color': '#1f2536', 'padding': '0px 5px'}
     )
 
-def update_packages(selected_packages):
+def get_packages_data(selected_packages):
     data_list = []
     for package_name in selected_packages:
         data = lib.get_package(package_name=package_name)
@@ -577,7 +576,6 @@ def update_parallel_coordinates(selected_packages, selected_measures):
     ],
 )
 def update_dependency_graph(selected_packages):
-    update_packages(selected_packages)
     return generate_dependency_graph(
         selected_packages
     )
