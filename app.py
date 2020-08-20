@@ -47,7 +47,7 @@ class Libraries:
         self.load_api_key()
 
         self.dependency_cache = {}
-        self.library_cache = {}
+        self.package_cache = {}
         self.response_caches = LRUCache(150)
 
         return
@@ -76,7 +76,7 @@ class Libraries:
         return resp
 
     def get_package(self, package='requests'):
-        if package not in self.library_cache:
+        if package not in self.package_cache:
             self.url = 'https://libraries.io/api/search?q={}'.format(package)
             self.get_response()
             results = self.r.json()
@@ -87,8 +87,8 @@ class Libraries:
             del self.json['normalized_licenses']
             del self.json['keywords']
             del self.json['latest_stable_release']
-            self.library_cache[package] = self.json
-        return self.library_cache[package]
+            self.package_cache[package] = self.json
+        return self.package_cache[package]
 
     def get_dependencies(self, obj):
         if obj['name'] not in self.dependency_cache:
@@ -130,15 +130,15 @@ server = app.server
 
 app.config["suppress_callback_exceptions"] = True
 
-# libraries = ['netflix-migrate', 'kafka-streams', 'vega']
-libraries = ['netflix-migrate', 'kafka-streams', 'vega', 'seaborn', 'bokeh', 'dash', 'plotly', 'ggplot', 'altair', 'matplotlib', 'pillow', 'jinja2', 'scipy', 'google-cloud-storage', 'redcarpet', 'django']
+# packages = ['netflix-migrate', 'kafka-streams', 'vega']
+packages = ['netflix-migrate', 'kafka-streams', 'vega', 'seaborn', 'bokeh', 'dash', 'plotly', 'ggplot', 'altair', 'matplotlib', 'pillow', 'jinja2', 'scipy', 'google-cloud-storage', 'redcarpet', 'django']
 measures = ['rank', 'stars', 'dependents_count', 'dependent_repos_count', 'forks']
 
-library_data = []
-for package in libraries:
+package_data = []
+for package in packages:
     data = lib.get_package(package=package)
     # print(data)
-    library_data.append(data)
+    package_data.append(data)
 
 def build_upper_left_panel():
     return html.Div(
@@ -146,15 +146,15 @@ def build_upper_left_panel():
         className="four columns",
         children=[
             html.Div(
-                id="library-select-outer",
+                id="package-select-outer",
                 children=[
-                    html.Label("Select libraries", style={'color': '#FFF'}),
+                    html.Label("Select packages", style={'color': '#FFF'}),
                     html.Div(
-                        id="library-select-dropdown-outer",
+                        id="package-select-dropdown-outer",
                         style={'color': '#FFF'},
                         children=dcc.Dropdown(
-                            id="library-select", multi=True, searchable=True, style={'color': '#FFF'},
-                            value=libraries[:4], options=[{"label": i, "value": i} for i in libraries],
+                            id="package-select", multi=True, searchable=True, style={'color': '#FFF'},
+                            value=packages[:4], options=[{"label": i, "value": i} for i in packages],
                             persistence_type="local", clearable=True
                         ),
                     ),
@@ -176,8 +176,8 @@ def build_upper_left_panel():
                     html.Div(
                         id="table-upper",
                         children=[
-                            html.P("Selected library details"),
-                            dcc.Loading(children=html.Div(id="libraries-table-container", children=dash_table.DataTable(id='libraries-table'))),
+                            html.P("Selected package details"),
+                            dcc.Loading(children=html.Div(id="packages-table-container", children=dash_table.DataTable(id='packages-table'))),
                         ],
                     )
                 ],
@@ -198,9 +198,9 @@ def get_palette(size):
     return palette 
 
 # Source: https://plotly.com/python/network-graphs/
-def generate_parallel_coordinates(library_select, measure_select):
+def generate_parallel_coordinates(package_select, measure_select):
     data_list = []
-    for package in library_select:
+    for package in package_select:
         data = lib.get_package(package=package)
         data_list.append(data)
 
@@ -209,24 +209,35 @@ def generate_parallel_coordinates(library_select, measure_select):
     for measure in measure_select:
         dimensions.append(dict(range = [min(df[measure]),max(df[measure])],
                 label = measure, values = df[measure], tickvals=np.unique(df[measure]).tolist()))
-    data = go.Parcoords(
+
+    palette = get_palette(df.shape[0])
+    parcoords = go.Parcoords(
         dimensions = list(dimensions),
         line = dict(color = df.index, 
-        colorscale = get_palette(df.shape[0]), 
-        colorbar = dict(tickvals = np.unique(df.index).tolist(), 
-        ticktext = np.unique(df['name']).tolist(), 
-        nticks = df.shape[0],
-        tickfont = dict(color ='#FFF', size=18))),
+        colorscale = palette),
         tickfont = dict(size=18),
         labelfont = dict(color ='#FFF', size=18)
     )
 
+    data = [parcoords]
+
     layout = go.Layout(
         plot_bgcolor="#171b26",
         paper_bgcolor="#171b26",
+        font_color="#FFF"
     )
+    
+    for i, package in enumerate(package_select):
+        trace_dummy = go.Scatter(
+            x=[0, 0, 0], # Data is irrelevant since it won't be shown
+            y=[0, 0, 0],
+            name=package,
+            showlegend=True,
+            marker=dict(color=palette[i], opacity=0),
+        )
+        data.append(trace_dummy)
 
-    return {"data": [data], "layout": layout}
+    return {"data": data, "layout": layout}
 
 def preorder_label_parent(parent, is_tree=False, node_list=None, links=None):
     if node_list is None:
@@ -287,14 +298,14 @@ def get_edge_trace(x, y, linecolor='rgb(210,210,210)', linewidth=1):
 
 dendency_graph_cache = {}
 
-def generate_dependency_graph(selected_libraries):
-    for package in selected_libraries:
+def generate_dependency_graph(selected_packages):
+    for package in selected_packages:
         data = lib.get_package(package=package)
-        library_data.append(data)
+        package_data.append(data)
 
     graphs = []
-    for package_name in selected_libraries:
-        package = next(x for x in library_data if x['name'] == package_name)
+    for package_name in selected_packages:
+        package = next(x for x in package_data if x['name'] == package_name)
         package_with_dependencies = lib.get_dependencies(package)
         package_with_dependencies['name'] = package_name
         if package_name not in dendency_graph_cache:
@@ -396,7 +407,7 @@ app.layout = html.Div(
                     children=[
                         html.P(
                             id="map-title",
-                            children="Comparison of libraries",
+                            children="Comparison of packages",
                         ),
                         html.Div(
                             id="parallel-coordinates-loading-outer",
@@ -442,9 +453,9 @@ app.layout = html.Div(
 
 
 @app.callback(
-    dash.dependencies.Output("library-select", "options"),
-    [dash.dependencies.Input("library-select", "search_value")],
-    [dash.dependencies.State("library-select", "value")],
+    dash.dependencies.Output("package-select", "options"),
+    [dash.dependencies.Input("package-select", "search_value")],
+    [dash.dependencies.State("package-select", "value")],
 )
 def update_multi_options(search_value, value):
     all_values = None
@@ -452,21 +463,21 @@ def update_multi_options(search_value, value):
         raise PreventUpdate
     try:
         if len(search_value) < 3:
-            return [{"label": i, "value": i} for i in libraries]
+            return [{"label": i, "value": i} for i in packages]
         req_url = "https://libraries.io/api/search?q={lib_name}&sort=stars&per_page=5".format(lib_name=search_value)
         res = lib.get_response_for_payload(req_url).json()
-        new_libraries = [r["name"] for r in res]
+        new_packages = [r["name"] for r in res]
         search_url = 'https://libraries.io/api/search?q={}&per_page=3'.format(search_value)
         exact_search = lib.get_response_for_payload(search_url).json()
         if search_value in [r["name"] for r in exact_search]:
-            new_libraries.append(search_value)
-        all_libraries = list(set(value + new_libraries))
-        all_libraries.sort(key=len)
-        all_values = [{"label": r, "value": r} for r in all_libraries]
+            new_packages.append(search_value)
+        all_packages = list(set(value + new_packages))
+        all_packages.sort(key=len)
+        all_values = [{"label": r, "value": r} for r in all_packages]
 
     except Exception as e:
         print(e)
-    return all_values or [{"label": i, "value": i} for i in libraries]
+    return all_values or [{"label": i, "value": i} for i in packages]
 
 @app.callback(
     Output("measure-select", "value"),
@@ -506,24 +517,26 @@ def update_measure_checklist(selected, select_options, checked):
     )
 
 @app.callback(
-    Output("libraries-table-container", "children"),
+    Output("packages-table-container", "children"),
     [
-        Input("library-select", "value"),
+        Input("package-select", "value"),
     ],
 )
-def update_libraries_table(library_select):
+def update_packages_table(package_select):
     columns = [
         "name",
+        "language",
+        "platform",
         "licenses",
         "latest_release_published_at",
         "latest_release_number",
         "description"
     ]
 
-    data_list = update_libraries(library_select)
+    data_list = update_packages(package_select)
 
     return dash_table.DataTable(
-        id="libraries-table",
+        id="packages-table",
         columns=[{"name": i, "id": i} for i in columns],
         data= data_list,
         #filter_action="native",
@@ -534,9 +547,9 @@ def update_libraries_table(library_select):
     )
 
 
-def update_libraries(library_select):
+def update_packages(package_select):
     data_list = []
-    for package in library_select:
+    for package in package_select:
         data = lib.get_package(package=package)
         data_list.append(data)
     return data_list
@@ -545,24 +558,24 @@ def update_libraries(library_select):
 @app.callback(
     Output("parallel-coordinates", "figure"),
     [
-        Input("library-select", "value"),
+        Input("package-select", "value"),
         Input("measure-select", "value"),
     ],
 )
-def update_parallel_coordinates(library_select, measure_select):
-    return generate_parallel_coordinates(library_select, measure_select)
+def update_parallel_coordinates(package_select, measure_select):
+    return generate_parallel_coordinates(package_select, measure_select)
 
 
 @app.callback(
     Output("dependency-graph-container", "children"),
     [
-        Input("library-select", 'value'),
+        Input("package-select", 'value'),
     ],
 )
-def update_dependency_graph(selected_libraries):
-    update_libraries(selected_libraries)
+def update_dependency_graph(selected_packages):
+    update_packages(selected_packages)
     return generate_dependency_graph(
-        selected_libraries
+        selected_packages
     )
 
 if __name__ == "__main__":

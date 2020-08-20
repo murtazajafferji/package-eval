@@ -65,7 +65,7 @@ body {
   font-size: 24px;
 }
 
-#library-select {
+#package-select {
   color: #FFF;
 }
 
@@ -100,7 +100,7 @@ span.Select-clear-zone {
   cursor: pointer;
 }
 
-#library-select-all, #state-select-outer > label, #select-metric-outer > label {
+#package-select-all, #state-select-outer > label, #select-metric-outer > label {
   margin-bottom: 2px;
   color: #7b7d8d;
 }
@@ -144,7 +144,7 @@ span.Select-clear-zone {
   margin: -300px 0px -200px 0px;
 }*/
 
-#select-metric-outer, #library-select-outer {
+#select-metric-outer, #package-select-outer {
   display: inline-block;
 }
 
