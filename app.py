@@ -131,7 +131,7 @@ server = app.server
 app.config["suppress_callback_exceptions"] = True
 
 # packages = ['vega', 'seaborn', 'plotly', 'd3', 'dash', 'bokeh', 'netflix-migrate', 'kafka-streams', 'ggplot', 'altair', 'matplotlib', 'pillow', 'jinja2', 'scipy', 'google-cloud-storage', 'redcarpet', 'django']
-packages = ['vega', 'seaborn', 'plotly', 'd3', 'dash']
+packages = ['vega', 'seaborn', 'plotly.js', 'dash', 'd3', 'matplotlib', 'ggplot', 'plotly', 'altair']
 measures = ['stars', 'dependents_count', 'dependent_repos_count', 'forks']
 
 package_data = []
