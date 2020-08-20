@@ -29,9 +29,9 @@ http = requests.Session()
 
 retries = Retry(total=4, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
 adapter = TimeoutHTTPAdapter(max_retries=retries)
-http.mount("http://", adapter)
+http.mount('http://', adapter)
 
-http.mount("https://", adapter)
+http.mount('https://', adapter)
 
 class Libraries:
     def __init__(self, api_file_path='./api.txt'):
@@ -75,20 +75,19 @@ class Libraries:
             self.response_caches.put(url, resp)
         return resp
 
-    def get_package(self, package='requests'):
-        if package not in self.package_cache:
-            self.url = 'https://libraries.io/api/search?q={}'.format(package)
+    def get_package(self, package_name='requests'):
+        if package_name not in self.package_cache:
+            self.url = 'https://libraries.io/api/search?q={}'.format(package_name)
             self.get_response()
             results = self.r.json()
-            # results.sort(key=lambda x: x.get('stars'), reverse=True)
-            filtered_results = list(filter(lambda obj: obj['name'] == package, results))
+            filtered_results = list(filter(lambda obj: obj['name'].lower() == package_name.lower() and obj['stars'] > 0, results))
             self.json = filtered_results[0] if len(filtered_results) > 0 else results[0]
             del self.json['versions']
             del self.json['normalized_licenses']
             del self.json['keywords']
             del self.json['latest_stable_release']
-            self.package_cache[package] = self.json
-        return self.package_cache[package]
+            self.package_cache[package_name] = self.json
+        return self.package_cache[package_name]
 
     def get_dependencies(self, obj):
         if obj['name'] not in self.dependency_cache:
@@ -102,7 +101,6 @@ class Libraries:
 lib = Libraries()
 lib.init_api_key()
 
-
 def get_response(url, payload=None):
     counter = 1
     while counter < 10:
@@ -115,30 +113,24 @@ def get_response(url, payload=None):
             print(e)
             counter = counter + 1
             time.sleep(100)
-    raise Exception("No response from libraries.io inspite of multiple calls")
+    raise Exception('No response from libraries.io inspite of multiple calls')
 
 app = dash.Dash(
     __name__,
     meta_tags=[
         {
-            "name": "viewport",
-            "content": "width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no",
+            'name': 'viewport',
+            'content': 'width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no',
         }
     ],
 )
 server = app.server
 
-app.config["suppress_callback_exceptions"] = True
+app.config['suppress_callback_exceptions'] = True
 
 # packages = ['vega', 'seaborn', 'plotly', 'd3', 'dash', 'bokeh', 'netflix-migrate', 'kafka-streams', 'ggplot', 'altair', 'matplotlib', 'pillow', 'jinja2', 'scipy', 'google-cloud-storage', 'redcarpet', 'django']
 packages = ['vega', 'seaborn', 'plotly.js', 'dash', 'd3', 'matplotlib', 'ggplot', 'plotly', 'altair']
 measures = ['stars', 'dependents_count', 'dependent_repos_count', 'forks']
-
-package_data = []
-for package in packages:
-    data = lib.get_package(package=package)
-    # print(data)
-    package_data.append(data)
 
 def get_palette(size):
     '''Get the suitable palette of a certain size'''
@@ -153,8 +145,8 @@ def get_palette(size):
 # Source: https://plotly.com/python/network-graphs/
 def generate_parallel_coordinates(selected_packages, selected_measures):
     data_list = []
-    for package in selected_packages:
-        data = lib.get_package(package=package)
+    for package_name in selected_packages:
+        data = lib.get_package(package_name=package_name)
         data_list.append(data)
 
     df = pd.DataFrame(data=data_list)
@@ -168,16 +160,16 @@ def generate_parallel_coordinates(selected_packages, selected_measures):
         dimensions = list(dimensions),
         line = dict(color = df.index, 
         colorscale = palette),
-        tickfont = dict(size=18),
-        labelfont = dict(color ='#FFF', size=18)
+        tickfont = dict(color ='#000', size=18),
+        labelfont = dict(size=18)
     )
 
     data = [parcoords]
 
     layout = go.Layout(
-        plot_bgcolor="#171b26",
-        paper_bgcolor="#171b26",
-        font_color="#FFF"
+        plot_bgcolor='#171b26',
+        paper_bgcolor='#171b26',
+        font_color='#FFF'
     )
     
     for i, package in enumerate(selected_packages):
@@ -190,7 +182,7 @@ def generate_parallel_coordinates(selected_packages, selected_measures):
         )
         data.append(trace_dummy)
 
-    return {"data": data, "layout": layout}
+    return {'data': data, 'layout': layout}
 
 def preorder_label_parent(parent, is_tree=False, node_list=None, links=None):
     if node_list is None:
@@ -221,7 +213,7 @@ def get_plotly_data(E, coords):
     Yedges = []
     for e in E:
         Xedges.extend([coords[e[0]][0], coords[e[1]][0], None])# x coordinates of the nodes defining the edge e
-        Yedges.extend([coords[e[0]][1], coords[e[1]][1], None])# y - " - 
+        Yedges.extend([coords[e[0]][1], coords[e[1]][1], None])# y - ' - 
         
     return Xnodes, Ynodes, Xedges, Yedges 
 
@@ -252,14 +244,15 @@ def get_edge_trace(x, y, linecolor='rgb(210,210,210)', linewidth=1):
 dendency_graph_cache = {}
 
 def generate_dependency_graph(selected_packages):
-    for package in selected_packages:
-        data = lib.get_package(package=package)
-        package_data.append(data)
+    package_data = []
+    for package_name in selected_packages:
+        package = lib.get_package(package_name=package_name)
+        package_data.append(package)
 
     graphs = []
     palette = get_palette(len(selected_packages))
-    for i, package_name in enumerate(selected_packages):
-        package = next(x for x in package_data if x['name'] == package_name)
+    for i, package in enumerate(package_data):
+        package_name = package['name']
         package_with_dependencies = lib.get_dependencies(package)
         package_with_dependencies['name'] = package_name
         if package_name not in dendency_graph_cache:
@@ -303,7 +296,7 @@ def generate_dependency_graph(selected_packages):
                             path=f'M{x0} {y0}, C {x1} {y1}, {x2} {y2}, {x3} {y3}',
                             line=dict(color='rgb(210,210,210)', width=1)
                                 ))                      
-        title = dict(text="{}".format(package['name']), font=dict(color="#FFF"))
+        title = dict(text='{}'.format(package['name']), font=dict(color='#FFF'))
         width = 500
         height = 500
         layout = go.Layout(title=title,
@@ -315,8 +308,8 @@ def generate_dependency_graph(selected_packages):
                         xaxis=dict(visible=False),
                         yaxis=dict(visible=False),          
                         hovermode='closest',
-                        plot_bgcolor="#171b26",
-                        paper_bgcolor="#171b26",
+                        plot_bgcolor='#171b26',
+                        paper_bgcolor='#171b26',
                         shapes=shapes)
         trace0 = go.Scatter(#type='scatter',
                 x=[ig_layout[0][0]],
@@ -329,10 +322,10 @@ def generate_dependency_graph(selected_packages):
                             labels=[o['name'] for o in node_list])
 
         graph = dcc.Graph(
-            className="dependencies-graph",
+            className='dependencies-graph',
             figure={
-                "data": [trace2, trace0],
-                "layout": layout
+                'data': [trace2, trace0],
+                'layout': layout
             },
         )
 
@@ -341,56 +334,56 @@ def generate_dependency_graph(selected_packages):
 
 
 app.layout = html.Div(
-    className="container scalable",
+    className='container scalable',
     children=[
         html.Div(
-            id="banner",
-            className="banner",
+            id='banner',
+            className='banner',
             children=[
-                html.H6("Package Evaluation Dashboard"),
+                html.H6('Package Evaluation Dashboard'),
             ],
         ),
         html.Div(
-            id="upper-container",
-            className="row",
+            id='upper-container',
+            className='row',
             children=[
                 html.Div(
-                    id="upper-left",
-                    className="four columns",
+                    id='upper-left',
+                    className='four columns',
                     children=[
                         html.Div(
-                            id="package-select-outer",
+                            id='package-select-outer',
                             children=[
-                                html.Label("Select packages", style={'color': '#FFF'}),
+                                html.Label('Select packages', style={'color': '#FFF'}),
                                 html.Div(
-                                    id="package-select-dropdown-outer",
+                                    id='package-select-dropdown-outer',
                                     style={'color': '#FFF'},
                                     children=dcc.Dropdown(
-                                        id="package-select", multi=True, searchable=True, style={'color': '#FFF'},
-                                        value=packages[:4], options=[{"label": i, "value": i} for i in packages],
-                                        persistence_type="local", clearable=True
+                                        id='package-select', multi=True, searchable=True, style={'color': '#FFF'},
+                                        value=packages[:4], options=[{'label': i, 'value': i} for i in packages],
+                                        persistence_type='local', clearable=True
                                     ),
                                 ),
-                                html.Label("Select measures"),
+                                html.Label('Select measures'),
                                 html.Div(
-                                    id="measure-checklist-container",
+                                    id='measure-checklist-container',
                                     children=dcc.Checklist(
-                                        id="measure-select-all",
-                                        options=[{"label": "Select All Measures", "value": "All"}],
+                                        id='measure-select-all',
+                                        options=[{'label': 'Select All Measures', 'value': 'All'}],
                                         value=[],
                                     ),
                                 ),
                                 html.Div(
-                                    id="measure-select-dropdown-outer",
+                                    id='measure-select-dropdown-outer',
                                     children=dcc.Dropdown(
-                                        id="measure-select", multi=True, searchable=True, style={'color': '#FFF'}, value=measures[:4], options=get_measures()
+                                        id='measure-select', multi=True, searchable=True, style={'color': '#FFF'}, value=measures[:4], options=get_measures()
                                     ),
                                 ),
                                 html.Div(
-                                    id="table-upper",
+                                    id='table-upper',
                                     children=[
-                                        html.P("Selected package details"),
-                                        dcc.Loading(children=html.Div(id="packages-table-container", children=dash_table.DataTable(id='packages-table'))),
+                                        html.P('Selected package details'),
+                                        dcc.Loading(children=html.Div(id='packages-table-container', children=dash_table.DataTable(id='packages-table'))),
                                     ],
                                 )
                             ],
@@ -398,25 +391,25 @@ app.layout = html.Div(
                     ],
                 ),
                 html.Div(
-                    id="parallel-coordinates-outer",
-                    className="eight columns",
+                    id='parallel-coordinates-outer',
+                    className='eight columns',
                     children=[
                         html.P(
-                            id="map-title",
-                            children="Comparison of packages",
+                            id='map-title',
+                            children='Comparison of packages',
                         ),
                         html.Div(
-                            id="parallel-coordinates-loading-outer",
+                            id='parallel-coordinates-loading-outer',
                             children=[
                                 dcc.Loading(
-                                    id="loading",
+                                    id='loading',
                                     children=[dcc.Graph(
-                                        id="parallel-coordinates",
+                                        id='parallel-coordinates',
                                         figure={
-                                            "data": [],
-                                            "layout": dict(
-                                                plot_bgcolor="#171b26",
-                                                paper_bgcolor="#171b26",
+                                            'data': [],
+                                            'layout': dict(
+                                                plot_bgcolor='#171b26',
+                                                paper_bgcolor='#171b26',
                                             ),
                                         },
                                     ),]
@@ -428,16 +421,16 @@ app.layout = html.Div(
             ],
         ),
         html.Div(
-            id="lower-container",
-            className="row",
+            id='lower-container',
+            className='row',
             children=html.Div(
-                className="twelve columns",
+                className='twelve columns',
                 children=[
                     html.P(
-                        children="Dependency graphs",
+                        children='Dependency graphs',
                     ),
                     html.Div(
-                        id="dependency-graph-container",
+                        id='dependency-graph-container',
                         children=[]
                     )
                 ],
@@ -445,13 +438,13 @@ app.layout = html.Div(
         )
         ,
         html.Div(
-            id="footer",
-            className="row",
+            id='footer',
+            className='row',
             children=html.Div(
-                className="twelve columns",
+                className='twelve columns',
                 children=
                     html.Div(
-                        children=["Powered by ", dcc.Link('Libraries.io', href='https://libraries.io/')]
+                        children=['Powered by ', dcc.Link('Libraries.io', href='https://libraries.io/')]
                     ),
             )
         )
@@ -460,9 +453,9 @@ app.layout = html.Div(
 
 
 @app.callback(
-    dash.dependencies.Output("package-select", "options"),
-    [dash.dependencies.Input("package-select", "search_value")],
-    [dash.dependencies.State("package-select", "value")],
+    dash.dependencies.Output('package-select', 'options'),
+    [dash.dependencies.Input('package-select', 'search_value')],
+    [dash.dependencies.State('package-select', 'value')],
 )
 def update_multi_options(search_value, value):
     all_values = None
@@ -470,38 +463,38 @@ def update_multi_options(search_value, value):
         raise PreventUpdate
     try:
         if len(search_value) < 3:
-            return [{"label": i, "value": i} for i in packages]
-        req_url = "https://libraries.io/api/search?q={lib_name}&sort=stars&per_page=5".format(lib_name=search_value)
+            return [{'label': i, 'value': i} for i in packages]
+        req_url = 'https://libraries.io/api/search?q={lib_name}&sort=stars&per_page=5'.format(lib_name=search_value)
         res = lib.get_response_for_payload(req_url).json()
-        new_packages = [r["name"] for r in res]
+        new_packages = [r['name'] for r in res]
         search_url = 'https://libraries.io/api/search?q={}&per_page=3'.format(search_value)
         exact_search = lib.get_response_for_payload(search_url).json()
-        if search_value in [r["name"] for r in exact_search]:
+        if search_value in [r['name'] for r in exact_search]:
             new_packages.append(search_value)
         all_packages = list(set(value + new_packages))
         all_packages.sort(key=len)
-        all_values = [{"label": r, "value": r} for r in all_packages]
+        all_values = [{'label': r, 'value': r} for r in all_packages]
 
     except Exception as e:
         print(e)
-    return all_values or [{"label": i, "value": i} for i in packages]
+    return all_values or [{'label': i, 'value': i} for i in packages]
 
 @app.callback(
-    Output("measure-select", "value"),
-    [Input("measure-select", "options"), Input("measure-select-all", "value")],
+    Output('measure-select', 'value'),
+    [Input('measure-select', 'options'), Input('measure-select-all', 'value')],
 )
 def update_measure_dropdown(options, select_all):
-    if select_all == ["All"]:
-        value = [i["value"] for i in options]
+    if select_all == ['All']:
+        value = [i['value'] for i in options]
     else:
         value = dash.no_update
     return value
 
 # Updates the Select All checkbox as the measure select is updated
 @app.callback(
-    Output("measure-checklist-container", "children"),
-    [Input("measure-select", "value")],
-    [State("measure-select", "options"), State("measure-select-all", "value")],
+    Output('measure-checklist-container', 'children'),
+    [Input('measure-select', 'value')],
+    [State('measure-select', 'options'), State('measure-select-all', 'value')],
 )
 def update_measure_checklist(selected, select_options, checked):
     if len(selected) < len(select_options) and len(checked) == 0:
@@ -509,8 +502,8 @@ def update_measure_checklist(selected, select_options, checked):
 
     elif len(selected) < len(select_options) and len(checked) == 1:
         return dcc.Checklist(
-            id="measure-select-all",
-            options=[{"label": "Select All", "value": "All"}],
+            id='measure-select-all',
+            options=[{'label': 'Select All', 'value': 'All'}],
             value=[],
         )
 
@@ -518,55 +511,53 @@ def update_measure_checklist(selected, select_options, checked):
         raise PreventUpdate()
 
     return dcc.Checklist(
-        id="measure-select-all",
-        options=[{"label": "Select All", "value": "All"}],
-        value=["All"],
+        id='measure-select-all',
+        options=[{'label': 'Select All', 'value': 'All'}],
+        value=['All'],
     )
 
 @app.callback(
-    Output("packages-table-container", "children"),
+    Output('packages-table-container', 'children'),
     [
-        Input("package-select", "value"),
+        Input('package-select', 'value'),
     ],
 )
 def update_packages_table(selected_packages):
     columns = [
-        "name",
-        "language",
-        "platform",
-        "licenses",
-        "latest_release_published_at",
-        "latest_release_number",
-        "description"
+        'name',
+        'language',
+        'platform',
+        'licenses',
+        'latest_release_published_at',
+        'latest_release_number',
+        'description'
     ]
 
     data_list = update_packages(selected_packages)
 
     return dash_table.DataTable(
-        id="packages-table",
-        columns=[{"name": i, "id": i} for i in columns],
+        id='packages-table',
+        columns=[{'name': i, 'id': i} for i in columns],
         data= data_list,
-        #filter_action="native",
+        #filter_action='native',
         page_size=10,
-        style_cell={"background-color": "#242a3b", "color": "#FFF", "text-align": "left"},
+        style_cell={'background-color': '#242a3b', 'color': '#FFF', 'text-align': 'left'},
         style_as_list_view=False,
-        style_header={"background-color": "#1f2536", "padding": "0px 5px"}
+        style_header={'background-color': '#1f2536', 'padding': '0px 5px'}
     )
-
 
 def update_packages(selected_packages):
     data_list = []
-    for package in selected_packages:
-        data = lib.get_package(package=package)
+    for package_name in selected_packages:
+        data = lib.get_package(package_name=package_name)
         data_list.append(data)
     return data_list
 
-
 @app.callback(
-    Output("parallel-coordinates", "figure"),
+    Output('parallel-coordinates', 'figure'),
     [
-        Input("package-select", "value"),
-        Input("measure-select", "value"),
+        Input('package-select', 'value'),
+        Input('measure-select', 'value'),
     ],
 )
 def update_parallel_coordinates(selected_packages, selected_measures):
@@ -574,9 +565,9 @@ def update_parallel_coordinates(selected_packages, selected_measures):
 
 
 @app.callback(
-    Output("dependency-graph-container", "children"),
+    Output('dependency-graph-container', 'children'),
     [
-        Input("package-select", 'value'),
+        Input('package-select', 'value'),
     ],
 )
 def update_dependency_graph(selected_packages):
@@ -585,5 +576,5 @@ def update_dependency_graph(selected_packages):
         selected_packages
     )
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run_server(debug=True)
