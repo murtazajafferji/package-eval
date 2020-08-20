@@ -169,7 +169,13 @@ def generate_parallel_coordinates(selected_packages, selected_measures):
     layout = go.Layout(
         plot_bgcolor='#171b26',
         paper_bgcolor='#171b26',
-        font_color='#FFF'
+        font_color='#FFF',
+        xaxis=dict(
+            showticklabels=False
+        ),
+        yaxis=dict(
+            showticklabels=False
+        )
     )
     
     for i, package in enumerate(selected_packages):
@@ -178,7 +184,7 @@ def generate_parallel_coordinates(selected_packages, selected_measures):
             y=[0, 0, 0],
             name=package,
             showlegend=True,
-            marker=dict(color=palette[i], size=30),
+            marker=dict(color=palette[i], size=30)
         )
         data.append(trace_dummy)
 
