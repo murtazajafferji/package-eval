@@ -140,6 +140,21 @@ span.Select-clear-zone {
   height: 60;
 }
 
+/* Legend hack */
+#parallel-coordinates .legend .traces .legendtoggle {
+  display: none;
+}
+
+#parallel-coordinates .legend .traces .legendtext {
+  cursor: default;
+}
+
+#parallel-coordinates .scatter .point {
+  display: none;
+}
+/* End legend hack */
+
+
 /*#dependencies-graph {
   margin: -300px 0px -200px 0px;
 }*/
@@ -218,11 +233,6 @@ span.Select-clear-zone {
 
   #lower-container {
     position: relative;
-  }
-
-  /* position procedure plot relative to outer div in mobile layout  */
-  .dependencies-graph {
-    position: absolute;
   }
 
   g.yaxislayer-above > g > text {

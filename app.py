@@ -130,8 +130,9 @@ server = app.server
 
 app.config["suppress_callback_exceptions"] = True
 
-# packages = ['netflix-migrate', 'kafka-streams', 'vega']
-packages = ['netflix-migrate', 'kafka-streams', 'vega', 'seaborn', 'bokeh', 'dash', 'plotly', 'ggplot', 'altair', 'matplotlib', 'pillow', 'jinja2', 'scipy', 'google-cloud-storage', 'redcarpet', 'django']
+# packages = ['vega', 'seaborn', 'plotly', 'd3', 'dash', 'bokeh', 'netflix-migrate', 'kafka-streams', 'ggplot', 'altair', 'matplotlib', 'pillow', 'jinja2', 'scipy', 'google-cloud-storage', 'redcarpet', 'django']
+packages = ['vega', 'seaborn', 'plotly', 'd3', 'dash']
+measures = ['stars', 'dependents_count', 'dependent_repos_count', 'forks']
 
 package_data = []
 for package in packages:
@@ -190,21 +191,21 @@ def get_palette(size):
     if size == 2:
         palette = ['red', 'blue']
     elif size <= 8:
-        palette = cl.scales[str(max(3, size))]['qual']['Set2']
+        palette = cl.scales[str(max(3, size))]['qual']['Set1']
     else:
-        palette = cl.interp(cl.scales['8']['qual']['Set2'], size)
+        palette = cl.interp(cl.scales['8']['qual']['Set1'], size)
     return palette 
 
 # Source: https://plotly.com/python/network-graphs/
-def generate_parallel_coordinates(package_select, measure_select):
+def generate_parallel_coordinates(selected_packages, selected_measures):
     data_list = []
-    for package in package_select:
+    for package in selected_packages:
         data = lib.get_package(package=package)
         data_list.append(data)
 
     df = pd.DataFrame(data=data_list)
     dimensions = []
-    for measure in measure_select:
+    for measure in selected_measures:
         dimensions.append(dict(range = [min(df[measure]),max(df[measure])],
                 label = measure, values = df[measure], tickvals=np.unique(df[measure]).tolist()))
 
@@ -225,13 +226,13 @@ def generate_parallel_coordinates(package_select, measure_select):
         font_color="#FFF"
     )
     
-    for i, package in enumerate(package_select):
+    for i, package in enumerate(selected_packages):
         trace_dummy = go.Scatter(
             x=[0, 0, 0], # Data is irrelevant since it won't be shown
             y=[0, 0, 0],
             name=package,
             showlegend=True,
-            marker=dict(color=palette[i], opacity=0),
+            marker=dict(color=palette[i], size=30),
         )
         data.append(trace_dummy)
 
@@ -302,7 +303,8 @@ def generate_dependency_graph(selected_packages):
         package_data.append(data)
 
     graphs = []
-    for package_name in selected_packages:
+    palette = get_palette(len(selected_packages))
+    for i, package_name in enumerate(selected_packages):
         package = next(x for x in package_data if x['name'] == package_name)
         package_with_dependencies = lib.get_dependencies(package)
         package_with_dependencies['name'] = package_name
@@ -365,11 +367,11 @@ def generate_dependency_graph(selected_packages):
         trace0 = go.Scatter(#type='scatter',
                 x=[ig_layout[0][0]],
                 y=[ig_layout[0][1]],
-                marker=dict(size=10, color='rgb(255,200,0)'),
+                marker=dict(size=10, color=palette[i]),
                 text=[package_name],
                 hoverinfo='text')
         #trace1 = get_edge_trace(Xe, Ye)
-        trace2 = get_node_trace(Xn, Yn, marker_size=5, marker_color='rgb(255,200,0)', 
+        trace2 = get_node_trace(Xn, Yn, marker_size=5, marker_color=palette[i], 
                             labels=[o['name'] for o in node_list])
 
         graph = dcc.Graph(
@@ -520,7 +522,7 @@ def update_measure_checklist(selected, select_options, checked):
         Input("package-select", "value"),
     ],
 )
-def update_packages_table(package_select):
+def update_packages_table(selected_packages):
     columns = [
         "name",
         "language",
@@ -531,7 +533,7 @@ def update_packages_table(package_select):
         "description"
     ]
 
-    data_list = update_packages(package_select)
+    data_list = update_packages(selected_packages)
 
     return dash_table.DataTable(
         id="packages-table",
@@ -545,9 +547,9 @@ def update_packages_table(package_select):
     )
 
 
-def update_packages(package_select):
+def update_packages(selected_packages):
     data_list = []
-    for package in package_select:
+    for package in selected_packages:
         data = lib.get_package(package=package)
         data_list.append(data)
     return data_list
@@ -560,8 +562,8 @@ def update_packages(package_select):
         Input("measure-select", "value"),
     ],
 )
-def update_parallel_coordinates(package_select, measure_select):
-    return generate_parallel_coordinates(package_select, measure_select)
+def update_parallel_coordinates(selected_packages, selected_measures):
+    return generate_parallel_coordinates(selected_packages, selected_measures)
 
 
 @app.callback(
