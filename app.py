@@ -165,7 +165,7 @@ server = app.server
 app.config['suppress_callback_exceptions'] = True
 
 # packages = ['vega', 'seaborn', 'plotly', 'd3', 'dash', 'bokeh', 'netflix-migrate', 'kafka-streams', 'ggplot', 'altair', 'matplotlib', 'pillow', 'jinja2', 'scipy', 'google-cloud-storage', 'redcarpet', 'django']
-packages = ['dash', 'plotly.js', 'vega', 'seaborn', 'd3', 'matplotlib', 'ggplot', 'plotly', 'altair']
+packages = ['dash', 'plotly.js', 'vega', 'seaborn', 'd3']
 
 def get_palette(size):
     '''Get the suitable palette of a certain size'''
