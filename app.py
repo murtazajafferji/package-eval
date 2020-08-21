@@ -12,7 +12,6 @@ import networkx as nx
 
 import requests
 import pandas as pd
-from pandas.io.json import json_normalize
 import colorlover as cl
 import numpy as np
 import json
@@ -179,7 +178,7 @@ def generate_parallel_coordinates(selected_packages, selected_measures):
         data = lib.get_processed_package(package_name=package_name)
         data_list.append(data)
 
-    df = json_normalize(data=data_list)
+    df = pd.DataFrame(data=data_list)
     dimensions = []
     for measure in selected_measures:
         measure_value = df[measure]
@@ -358,6 +357,27 @@ def generate_dependency_graph(selected_packages):
         graphs.append(graph)
     return graphs
 
+def get_multi_options(search_value, value):
+    all_values = None
+    if not search_value:
+        raise PreventUpdate
+    try:
+        if len(search_value) < 3:
+            return [{'label': i, 'value': i} for i in packages]
+        req_url = 'https://libraries.io/api/search?q={lib_name}&sort=stars&per_page=5'.format(lib_name=search_value)
+        res = lib.get_response(req_url).json()
+        new_packages = [r['name'] for r in res]
+        search_url = 'https://libraries.io/api/search?q={}&per_page=3'.format(search_value)
+        exact_search = lib.get_response(search_url).json()
+        if search_value in [r['name'] for r in exact_search]:
+            new_packages.append(search_value)
+        all_packages = list(set(value + new_packages))
+        all_packages.sort(key=len)
+        all_values = [{'label': r, 'value': r} for r in all_packages]
+    except Exception as e:
+        print(e)
+    return all_values or [{'label': i, 'value': i} for i in packages]
+
 def get_packages_data(selected_packages):
     data_list = []
     for package_name in selected_packages:
@@ -492,25 +512,7 @@ app.layout = html.Div(
     [dash.dependencies.State('package-select', 'value')],
 )
 def update_multi_options(search_value, value):
-    all_values = None
-    if not search_value:
-        raise PreventUpdate
-    try:
-        if len(search_value) < 3:
-            return [{'label': i, 'value': i} for i in packages]
-        req_url = 'https://libraries.io/api/search?q={lib_name}&sort=stars&per_page=5'.format(lib_name=search_value)
-        res = lib.get_response(req_url).json()
-        new_packages = [r['name'] for r in res]
-        search_url = 'https://libraries.io/api/search?q={}&per_page=3'.format(search_value)
-        exact_search = lib.get_response(search_url).json()
-        if search_value in [r['name'] for r in exact_search]:
-            new_packages.append(search_value)
-        all_packages = list(set(value + new_packages))
-        all_packages.sort(key=len)
-        all_values = [{'label': r, 'value': r} for r in all_packages]
-    except Exception as e:
-        print(e)
-    return all_values or [{'label': i, 'value': i} for i in packages]
+    return get_multi_options(search_value, value)
 
 @app.callback(
     Output('measure-select', 'value'),
