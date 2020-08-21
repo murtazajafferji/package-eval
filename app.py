@@ -186,8 +186,10 @@ def generate_parallel_coordinates(selected_packages, selected_measures):
     df = pd.DataFrame(data=data_list)
     dimensions = []
     for measure in selected_measures:
-        dimensions.append(dict(range = [min(df[measure]),max(df[measure])],
-                label = measure, values = df[measure], tickvals=np.unique(df[measure]).tolist()))
+        measure_value = df[measure]
+        measure_range = [max(measure_value), min(measure_value)] if measure == "dependency_count" else [min(measure_value), max(measure_value)]
+        dimensions.append(dict(range =measure_range,
+                               label = measure, values =measure_value, tickvals=np.unique(measure_value).tolist()))
 
     palette = get_palette(df.shape[0])
     parcoords = go.Parcoords(
