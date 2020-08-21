@@ -46,7 +46,6 @@ class Libraries:
         
         self.load_api_key()
 
-        self.dependency_cache = {}
         self.package_cache = {}
         self.response_caches = LRUCache(150)
 
@@ -75,28 +74,50 @@ class Libraries:
             self.response_caches.put(url, resp)
         return resp
 
-    def get_package(self, package_name='requests'):
+    def get_processed_package(self, package_name='requests'):
         if package_name not in self.package_cache:
-            self.url = 'https://libraries.io/api/search?q={}'.format(package_name)
-            self.get_response()
-            results = self.r.json()
-            filtered_results = list(filter(lambda obj: obj['name'].lower() == package_name.lower() and obj['stars'] > 0, results))
-            self.json = filtered_results[0] if len(filtered_results) > 0 else results[0]
-            del self.json['versions']
-            del self.json['normalized_licenses']
-            del self.json['keywords']
-            del self.json['latest_stable_release']
-            self.package_cache[package_name] = self.json
+            package = self.get_package(package_name)
+            package['dependencies'] = self.get_dependencies(package)['dependencies']
+            package['dependency_graph'] = self.preorder_label_parent(package, True)
+            package['dependency_count'] = len(package['dependency_graph'][0])
+            self.package_cache[package_name] = package
         return self.package_cache[package_name]
 
+    def get_package(self, package_name='requests'):
+        self.url = 'https://libraries.io/api/search?q={}'.format(package_name)
+        self.get_response()
+        results = self.r.json()
+        filtered_results = list(filter(lambda obj: obj['name'].lower() == package_name.lower() and obj['stars'] > 0, results))
+        self.json = filtered_results[0] if len(filtered_results) > 0 else results[0]
+        del self.json['versions']
+        del self.json['normalized_licenses']
+        del self.json['keywords']
+        del self.json['latest_stable_release']
+        return self.json
+
     def get_dependencies(self, obj):
-        if obj['name'] not in self.dependency_cache:
-            self.url = 'https://libraries.io/api/{}/{}/latest/tree'.format(obj['platform'], obj['name'])
-            self.get_response()
-            self.json = self.r.json()
-            self.dependency_cache[obj['name']] = self.json
-            # print(dependencies)
-        return self.dependency_cache[obj['name']]
+        self.url = 'https://libraries.io/api/{}/{}/latest/tree'.format(obj['platform'], obj['name'])
+        self.get_response()
+        self.json = self.r.json()
+        return self.json
+
+    def preorder_label_parent(self, parent, is_tree=False, node_list=None, links=None):
+        if node_list is None:
+            node_list=list()
+        if links is None:
+            links=[] 
+        if 'id' not in parent:
+            parent['id'] = parent['name'] if not is_tree else str(uuid.uuid4())
+        if next((x for x in node_list if x['id'] == parent['id']), None) is None:
+            node_list.append(parent)
+        if 'dependencies' in parent:
+            for child in parent.get('dependencies'):
+                child['name'] = child['dependency']['project_name']
+                child['id'] = child['name'] if not is_tree else str(uuid.uuid4())
+                links.append((parent['id'], child['id']))
+                self.preorder_label_parent(child, is_tree, node_list, links)
+            
+        return node_list, links
 
 lib = Libraries()
 lib.init_api_key()
@@ -130,7 +151,7 @@ app.config['suppress_callback_exceptions'] = True
 
 # packages = ['vega', 'seaborn', 'plotly', 'd3', 'dash', 'bokeh', 'netflix-migrate', 'kafka-streams', 'ggplot', 'altair', 'matplotlib', 'pillow', 'jinja2', 'scipy', 'google-cloud-storage', 'redcarpet', 'django']
 packages = ['dash', 'plotly.js', 'vega', 'seaborn', 'd3', 'matplotlib', 'ggplot', 'plotly', 'altair']
-measures = ['stars', 'dependents_count', 'dependent_repos_count', 'forks']
+measures = ['stars', 'dependency_count', 'dependents_count', 'dependent_repos_count', 'forks']
 
 def get_palette(size):
     '''Get the suitable palette of a certain size'''
@@ -146,7 +167,7 @@ def get_palette(size):
 def generate_parallel_coordinates(selected_packages, selected_measures):
     data_list = []
     for package_name in selected_packages:
-        data = lib.get_package(package_name=package_name)
+        data = lib.get_processed_package(package_name=package_name)
         data_list.append(data)
 
     df = pd.DataFrame(data=data_list)
@@ -192,24 +213,6 @@ def generate_parallel_coordinates(selected_packages, selected_measures):
 
     return {'data': data, 'layout': layout}
 
-def preorder_label_parent(parent, is_tree=False, node_list=None, links=None):
-    if node_list is None:
-        node_list=list()
-    if links is None:
-        links=[] 
-    if 'id' not in parent:
-        parent['id'] = parent['name'] if not is_tree else str(uuid.uuid4())
-    if next((x for x in node_list if x['id'] == parent['id']), None) is None:
-        node_list.append(parent)
-    if 'dependencies' in parent:
-        for child in parent.get('dependencies'):
-            child['name'] = child['dependency']['project_name']
-            child['id'] = child['name'] if not is_tree else str(uuid.uuid4())
-            links.append((parent['id'], child['id']))
-            preorder_label_parent(child, is_tree, node_list, links)
-        
-    return node_list, links
-
 def get_plotly_data(E, coords):
     # E is the list of tuples representing the graph edges
     # coords is the list of node coordinates  assigned by a graph layout algorithm
@@ -248,9 +251,6 @@ def get_edge_trace(x, y, linecolor='rgb(210,210,210)', linewidth=1):
                 hoverinfo='none'
                )
 
-dendency_graph_cache = {}
-
-
 def get_package_tooltip(obj):
     tool_tip = obj['name']
     try:
@@ -267,19 +267,13 @@ def get_package_tooltip(obj):
 def generate_dependency_graph(selected_packages):
     package_data = []
     for package_name in selected_packages:
-        package = lib.get_package(package_name=package_name)
+        package = lib.get_processed_package(package_name=package_name)
         package_data.append(package)
 
     graphs = []
     palette = get_palette(len(selected_packages))
     for i, package in enumerate(package_data):
-        package_name = package['name']
-        package_with_dependencies = lib.get_dependencies(package)
-        package_with_dependencies['name'] = package_name
-        if package_name not in dendency_graph_cache:
-            dendency_graph_cache[package_name] = preorder_label_parent(package_with_dependencies, True)
-
-        dendency_graph = dendency_graph_cache[package_name]
+        dendency_graph = package['dependency_graph']
         node_list, pre_links = dendency_graph[0], dendency_graph[1]
 
         g = ig.Graph(directed=True)
@@ -374,7 +368,6 @@ app.layout = html.Div(
                                 html.Label('Select packages', className='section-title', style={'color': '#FFF'}),
                                 html.Div(
                                     id='package-select-dropdown-outer',
-                                    className="padding-bottom",
                                     style={'color': '#FFF'},
                                     children=dcc.Dropdown(
                                         id='package-select', multi=True, searchable=True, style={'color': '#FFF'},
@@ -441,6 +434,7 @@ app.layout = html.Div(
                             children=[
                                 dcc.Loading(children=html.Div(id='packages-table-container', children=dash_table.DataTable(id='packages-table'))),
                             ],
+                            className="padding-bottom"
                         ),
                         html.Div(
                             children=dcc.Loading(
@@ -556,10 +550,11 @@ def update_packages_table(selected_packages):
 
     data_list = get_packages_data(selected_packages)
 
+    data_list_reduced_columns =  pd.DataFrame(data_list, columns=columns)
     return dash_table.DataTable(
         id='packages-table',
         columns=[{'name': i, 'id': i} for i in columns],
-        data= data_list,
+        data=data_list_reduced_columns.to_dict('rows'),
         #filter_action='native',
         page_size=10,
         style_cell={'background-color': '#242a3b', 'color': '#FFF', 'text-align': 'left'},
@@ -570,7 +565,7 @@ def update_packages_table(selected_packages):
 def get_packages_data(selected_packages):
     data_list = []
     for package_name in selected_packages:
-        data = lib.get_package(package_name=package_name)
+        data = lib.get_processed_package(package_name=package_name)
         data_list.append(data)
     return data_list
 
