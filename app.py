@@ -39,8 +39,6 @@ class Libraries:
         self.api_file_path = api_file_path        
         self.api_key = None
         self.payload = None
-        self.url = None
-        self.r  = None
         
         self.load_api_key()
 
@@ -62,10 +60,7 @@ class Libraries:
         self.payload.update({'api_key': self.api_key})
         return
     
-    def get_response(self):
-        self.r = self.get_response_for_payload(self.url)
-
-    def get_response_for_payload(self, url):
+    def get_response(self, url):
         resp = self.response_caches.get(url)
         if resp is None:
             resp = get_response(url, self.payload)
@@ -74,6 +69,7 @@ class Libraries:
 
     def get_processed_package(self, package_name='requests'):
         if package_name not in self.package_cache:
+            self.package_cache[package_name] = None
             package = self.get_package(package_name)
 
             package['dependencies'] = self.get_dependencies(package)['dependencies']
@@ -89,9 +85,9 @@ class Libraries:
         return self.package_cache[package_name]
 
     def get_package(self, package_name='requests'):
-        self.url = 'https://libraries.io/api/search?q={}'.format(package_name)
-        self.get_response()
-        results = self.r.json()
+        url = 'https://libraries.io/api/search?q={}'.format(package_name)
+        response = self.get_response(url)
+        results = response.json()
         filtered_results = list(filter(lambda obj: obj['name'].lower() == package_name.lower() and obj['stars'] > 0, results))
         json = filtered_results[0] if len(filtered_results) > 0 else results[0]
         del json['versions']
@@ -101,19 +97,19 @@ class Libraries:
         return json
 
     def get_dependencies(self, obj):
-        self.url = 'https://libraries.io/api/{}/{}/latest/tree'.format(obj['platform'], obj['name'])
-        self.get_response()
-        json = self.r.json()
+        url = 'https://libraries.io/api/{}/{}/latest/tree'.format(obj['platform'], obj['name'])
+        response = self.get_response(url)
+        json = response.json()
         return json
 
     def get_repository(self, obj):
         repo_path = obj['repository_url'].replace('https://', '').replace('.com', '')
+        json = None
         if 'github' in repo_path:
-            self.url = 'https://libraries.io/api/{}'.format(repo_path)
-            self.get_response()
-            json = self.r.json()
-        else:
-            json = None
+            url = 'https://libraries.io/api/{}'.format(repo_path)
+            response = self.get_response(url)
+            if response.status_code == 200:
+                json = response.json()
         return json
 
     def preorder_label_parent(self, parent, is_tree=False, node_list=None, links=None):
@@ -138,18 +134,7 @@ lib = Libraries()
 lib.init_api_key()
 
 def get_response(url, payload=None):
-    counter = 1
-    while counter < 10:
-        try:
-            r = requests.get(url, params=payload)
-            r.raise_for_status()
-            print(r.url)
-            return r
-        except Exception as e:
-            print(e)
-            counter = counter + 1
-            time.sleep(100)
-    raise Exception('No response from libraries.io inspite of multiple calls')
+    return requests.get(url, params=payload)
 
 app = dash.Dash(
     __name__,
@@ -496,16 +481,15 @@ def update_multi_options(search_value, value):
         if len(search_value) < 3:
             return [{'label': i, 'value': i} for i in packages]
         req_url = 'https://libraries.io/api/search?q={lib_name}&sort=stars&per_page=5'.format(lib_name=search_value)
-        res = lib.get_response_for_payload(req_url).json()
+        res = lib.get_response(req_url).json()
         new_packages = [r['name'] for r in res]
         search_url = 'https://libraries.io/api/search?q={}&per_page=3'.format(search_value)
-        exact_search = lib.get_response_for_payload(search_url).json()
+        exact_search = lib.get_response(search_url).json()
         if search_value in [r['name'] for r in exact_search]:
             new_packages.append(search_value)
         all_packages = list(set(value + new_packages))
         all_packages.sort(key=len)
         all_values = [{'label': r, 'value': r} for r in all_packages]
-
     except Exception as e:
         print(e)
     return all_values or [{'label': i, 'value': i} for i in packages]
