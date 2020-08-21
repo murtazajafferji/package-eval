@@ -7,12 +7,12 @@ from dash.dependencies import State, Input, Output
 from dash.exceptions import PreventUpdate
 import plotly.express as px
 import time
-import pandas as pd
 import os
 import networkx as nx
 
 import requests
 import pandas as pd
+from pandas.io.json import json_normalize
 import colorlover as cl
 import numpy as np
 import json
@@ -69,12 +69,11 @@ class Libraries:
 
     def get_processed_package(self, package_name='requests'):
         if package_name not in self.package_cache:
-            self.package_cache[package_name] = None
             package = self.get_package(package_name)
 
             package['dependencies'] = self.get_dependencies(package)['dependencies']
             package['dependency_graph'] = self.preorder_label_parent(package, True)
-            package['dependency_count'] = len(package['dependency_graph'][0])
+            package['dependency_count'] = len(package['dependency_graph'][0]) - 1
 
             repo = self.get_repository(package)
             if repo is not None:
@@ -134,7 +133,18 @@ lib = Libraries()
 lib.init_api_key()
 
 def get_response(url, payload=None):
-    return requests.get(url, params=payload)
+    counter = 1
+    while counter < 10:
+        try:
+            r = requests.get(url, params=payload)
+            if r.status_code != 404:
+                r.raise_for_status()
+            return r
+        except Exception as e:
+            print(e)
+            counter = counter + 1
+            time.sleep(100)
+    raise Exception('No response from libraries.io inspite of multiple calls')
 
 app = dash.Dash(
     __name__,
@@ -169,7 +179,7 @@ def generate_parallel_coordinates(selected_packages, selected_measures):
         data = lib.get_processed_package(package_name=package_name)
         data_list.append(data)
 
-    df = pd.DataFrame(data=data_list)
+    df = json_normalize(data=data_list)
     dimensions = []
     for measure in selected_measures:
         measure_value = df[measure]
@@ -348,6 +358,14 @@ def generate_dependency_graph(selected_packages):
         graphs.append(graph)
     return graphs
 
+def get_packages_data(selected_packages):
+    data_list = []
+    for package_name in selected_packages:
+        data = lib.get_processed_package(package_name=package_name)
+        data_list.append(data)
+    return data_list
+
+get_packages_data(packages)
 
 app.layout = html.Div(
     className='container scalable',
@@ -561,13 +579,6 @@ def update_packages_table(selected_packages):
         style_as_list_view=False,
         style_header={'background-color': '#1f2536', 'padding': '0px 5px'}
     )
-
-def get_packages_data(selected_packages):
-    data_list = []
-    for package_name in selected_packages:
-        data = lib.get_processed_package(package_name=package_name)
-        data_list.append(data)
-    return data_list
 
 @app.callback(
     Output('parallel-coordinates', 'figure'),
