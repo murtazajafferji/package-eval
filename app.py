@@ -82,6 +82,7 @@ class Libraries:
 
             repo = self.get_repository(package)
             if repo is not None:
+                del repo['name']
                 package.update(repo)
 
             self.package_cache[package_name] = package
@@ -325,7 +326,7 @@ def generate_dependency_graph(selected_packages):
                             #def SVG Bezier path representing an edge
                             path=f'M{x0} {y0}, C {x1} {y1}, {x2} {y2}, {x3} {y3}',
                             line=dict(color='rgb(210,210,210)', width=1)
-                                ))                      
+                                ))       
         title = dict(text='{}'.format(package['name']), font=dict(color='#FFF'))
         width = 500
         height = 500
