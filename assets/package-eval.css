@@ -26,7 +26,6 @@ body {
 }
 
 .banner h6 {
-  font-family: 'Open Sans', sans-serif;
   font-size: 24px;
   font-weight: 600;
   line-height: 1;
@@ -43,12 +42,6 @@ body {
   margin: 2rem 5rem;
 }
 
-#upper-left, #parallel-coordinates-outer {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-evenly;
-}
-
 .control-row-1 {
   display: flex;
   flex-direction: row;
@@ -59,10 +52,11 @@ body {
   width: 45%;
 }
 
-#upper-left > div > label {
-  font-weight: bold;
-  margin: 20px 0px;
-  font-size: 24px;
+.section-title, p {
+  margin: 10px 0px;
+  font-size: 22px;
+  display: block;
+  font-weight: 600;
 }
 
 #package-select {
@@ -114,12 +108,6 @@ span.Select-clear-zone {
   font-size: 11px;
 }
 
-
-#table-upper > p, #table-lower > p {
-  font-weight: bold;
-  margin: 20px 0px;
-}
-
 #lower-container {
   border-top: 1px solid #1f2536;
 }
@@ -158,19 +146,14 @@ span.Select-clear-zone {
   text-align: center;
 }
 
+.padding-bottom {
+  padding-bottom: 20px;
+}
+
+
 /*#dependencies-graph {
   margin: -300px 0px -200px 0px;
 }*/
-
-#select-metric-outer, #package-select-outer {
-  display: inline-block;
-}
-
-.section-title, p {
-  font-size: 24px;
-  font-weight: bold;
-  display: block;
-}
 
 .mapboxgl-canvas,
 .mapboxgl-map {
@@ -249,10 +232,6 @@ span.Select-clear-zone {
   ##Screen = B/w 768px to 1024px
 */
 @media only screen and (min-width: 768px) and (max-width: 1024px) {
-
-  #upper-left, #parallel-coordinates-outer {
-    padding: 1rem 4rem;
-  }
 
   #state-select-outer, #select-metric-outer {
     width: 45%;

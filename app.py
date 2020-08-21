@@ -171,6 +171,7 @@ def generate_parallel_coordinates(selected_packages, selected_measures):
         paper_bgcolor='#171b26',
         font_color='#FFF',
         font_size=18,
+        font_family='"Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif',
         xaxis=dict(
             showticklabels=False
         ),
@@ -320,7 +321,7 @@ def generate_dependency_graph(selected_packages):
         width = 500
         height = 500
         layout = go.Layout(title=title,
-                        font= dict(size=18),
+                        font= dict(size=16, family='"Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif'),
                         showlegend=False,
                         autosize=False,
                         width=width,
@@ -363,61 +364,60 @@ app.layout = html.Div(
                 html.H6('Package Evaluation Dashboard'),
             ],
         ),
-        html.Div(
-            id='upper-container',
-            className='row',
-            children=[
-                html.Div(
-                    id='upper-left',
-                    className='four columns',
+        html.Div(id='upper-container',
+                 children=html.Div(
+                    className='row',
                     children=[
                         html.Div(
-                            id='package-select-outer',
+                            className='six columns',
                             children=[
-                                html.Label('Select packages', style={'color': '#FFF'}),
+                                html.Label('Select packages', className='section-title', style={'color': '#FFF'}),
                                 html.Div(
                                     id='package-select-dropdown-outer',
+                                    className="padding-bottom",
                                     style={'color': '#FFF'},
                                     children=dcc.Dropdown(
                                         id='package-select', multi=True, searchable=True, style={'color': '#FFF'},
                                         value=packages[:4], options=[{'label': i, 'value': i} for i in packages],
                                         persistence_type='local', clearable=True
                                     ),
-                                ),
-                                html.Label('Select measures'),
-                                html.Div(
-                                    id='measure-checklist-container',
-                                    children=dcc.Checklist(
-                                        id='measure-select-all',
-                                        options=[{'label': 'Select All Measures', 'value': 'All'}],
-                                        value=[],
-                                    ),
-                                ),
+                                )
+                            ],
+                        ),
+                        html.Div(
+                            className='six columns',
+                            children=[
+                                html.Label('Select measures', className='section-title'),
                                 html.Div(
                                     id='measure-select-dropdown-outer',
+                                    className="padding-bottom",
                                     children=dcc.Dropdown(
                                         id='measure-select', multi=True, searchable=True, style={'color': '#FFF'}, value=measures[:4], options=get_measures()
                                     ),
                                 ),
                                 html.Div(
-                                    id='table-upper',
-                                    children=[
-                                        html.P('Selected package details'),
-                                        dcc.Loading(children=html.Div(id='packages-table-container', children=dash_table.DataTable(id='packages-table'))),
-                                    ],
-                                )
+                                    id='measure-checklist-container',
+                                    children=dcc.Checklist(
+                                        id='measure-select-all',
+                                        options=[{'label': 'Select all', 'value': 'All'}],
+                                        value=[],
+                                    ),
+                                ),
                             ],
                         ),
                     ],
                 ),
+        )
+        ,
+        html.Div(
+            id='lower-container',
+            className='row',
+            children=[
                 html.Div(
                     id='parallel-coordinates-outer',
-                    className='eight columns',
+                    className='twelve columns',
                     children=[
-                        html.P(
-                            id='map-title',
-                            children='Comparison of packages',
-                        ),
+                        html.P('Package comparison'),
                         html.Div(
                             id='parallel-coordinates-loading-outer',
                             children=[
@@ -436,28 +436,29 @@ app.layout = html.Div(
                                 )
                             ],
                         ),
-                    ],
-                ),
-            ],
+                        html.Div(
+                            id='table-upper',
+                            children=[
+                                dcc.Loading(children=html.Div(id='packages-table-container', children=dash_table.DataTable(id='packages-table'))),
+                            ],
+                        ),
+                        html.Div(
+                            children=dcc.Loading(
+                                children=[
+                                html.P(
+                                    className='chart-title',
+                                    children='Dependency graphs',
+                                ),
+                                html.Div(
+                                    id='dependency-graph-container',
+                                    children=[]
+                                )
+                            ]),
+                        )
+                    ]
+                )
+            ]
         ),
-        html.Div(
-            id='lower-container',
-            className='row',
-            children=html.Div(
-                className='twelve columns',
-                children=dcc.Loading(
-                    children=[
-                    html.P(
-                        children='Dependency graphs',
-                    ),
-                    html.Div(
-                        id='dependency-graph-container',
-                        children=[]
-                    )
-                ]),
-            )
-        )
-        ,
         html.Div(
             id='footer',
             className='row',
