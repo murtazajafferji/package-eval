@@ -23,7 +23,7 @@ from requests.packages.urllib3.util.retry import Retry
 
 from LRUCache import LRUCache
 from TimeoutHTTPAdapter import TimeoutHTTPAdapter
-from controller.measures import measures, get_measures
+from controller.measures import measures, get_measures, find_measure_details_by_name
 
 http = requests.Session()
 
@@ -190,7 +190,7 @@ def generate_parallel_coordinates(selected_packages, selected_measures):
         measure_value = df[measure]
         measure_range = [max(measure_value), min(measure_value)] if measure == "dependency_count" else [min(measure_value), max(measure_value)]
         dimensions.append(dict(range =measure_range,
-                               label = measure, values =measure_value, tickvals=np.unique(measure_value).tolist()))
+                               label = find_measure_details_by_name(measure)['label'], values=measure_value, tickvals=np.unique(measure_value).tolist()))
 
     palette = get_palette(df.shape[0])
     parcoords = go.Parcoords(
