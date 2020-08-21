@@ -197,7 +197,7 @@ def generate_parallel_coordinates(selected_packages, selected_measures):
         dimensions = list(dimensions),
         line = dict(color = df.index, 
         colorscale = palette),
-        tickfont = dict(color ='#000', size=18),
+        tickfont = dict(size=18),
         labelfont = dict(size=18)
     )
 
