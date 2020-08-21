@@ -41,8 +41,6 @@ class Libraries:
         self.payload = None
         self.url = None
         self.r  = None
-        self.json = None
-        self.json_flat = None
         
         self.load_api_key()
 
@@ -77,9 +75,15 @@ class Libraries:
     def get_processed_package(self, package_name='requests'):
         if package_name not in self.package_cache:
             package = self.get_package(package_name)
+
             package['dependencies'] = self.get_dependencies(package)['dependencies']
             package['dependency_graph'] = self.preorder_label_parent(package, True)
             package['dependency_count'] = len(package['dependency_graph'][0])
+
+            repo = self.get_repository(package)
+            if repo is not None:
+                package.update(repo)
+
             self.package_cache[package_name] = package
         return self.package_cache[package_name]
 
@@ -88,18 +92,28 @@ class Libraries:
         self.get_response()
         results = self.r.json()
         filtered_results = list(filter(lambda obj: obj['name'].lower() == package_name.lower() and obj['stars'] > 0, results))
-        self.json = filtered_results[0] if len(filtered_results) > 0 else results[0]
-        del self.json['versions']
-        del self.json['normalized_licenses']
-        del self.json['keywords']
-        del self.json['latest_stable_release']
-        return self.json
+        json = filtered_results[0] if len(filtered_results) > 0 else results[0]
+        del json['versions']
+        del json['normalized_licenses']
+        del json['keywords']
+        del json['latest_stable_release']
+        return json
 
     def get_dependencies(self, obj):
         self.url = 'https://libraries.io/api/{}/{}/latest/tree'.format(obj['platform'], obj['name'])
         self.get_response()
-        self.json = self.r.json()
-        return self.json
+        json = self.r.json()
+        return json
+
+    def get_repository(self, obj):
+        repo_path = obj['repository_url'].replace('https://', '').replace('.com', '')
+        if 'github' in repo_path:
+            self.url = 'https://libraries.io/api/{}'.format(repo_path)
+            self.get_response()
+            json = self.r.json()
+        else:
+            json = None
+        return json
 
     def preorder_label_parent(self, parent, is_tree=False, node_list=None, links=None):
         if node_list is None:
@@ -151,7 +165,6 @@ app.config['suppress_callback_exceptions'] = True
 
 # packages = ['vega', 'seaborn', 'plotly', 'd3', 'dash', 'bokeh', 'netflix-migrate', 'kafka-streams', 'ggplot', 'altair', 'matplotlib', 'pillow', 'jinja2', 'scipy', 'google-cloud-storage', 'redcarpet', 'django']
 packages = ['dash', 'plotly.js', 'vega', 'seaborn', 'd3', 'matplotlib', 'ggplot', 'plotly', 'altair']
-measures = ['stars', 'dependency_count', 'dependents_count', 'dependent_repos_count', 'forks']
 
 def get_palette(size):
     '''Get the suitable palette of a certain size'''
