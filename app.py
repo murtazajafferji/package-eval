@@ -188,7 +188,7 @@ def generate_parallel_coordinates(selected_packages, selected_measures):
     dimensions = []
     for measure in selected_measures:
         measure_value = df[measure]
-        measure_range = [max(measure_value), min(measure_value)] if measure == "dependency_count" else [min(measure_value), max(measure_value)]
+        measure_range = [max(measure_value), min(measure_value)] if measure == "dependency_count" or measure == "open_issues_count" else [min(measure_value), max(measure_value)]
         dimensions.append(dict(range =measure_range,
                                label = find_measure_details_by_name(measure)['label'], values=measure_value, tickvals=np.unique(measure_value).tolist()))
 
