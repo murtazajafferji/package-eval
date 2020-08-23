@@ -88,10 +88,6 @@ class Libraries:
         results = response.json()
         filtered_results = list(filter(lambda obj: obj['name'].lower() == package_name.lower() and obj['stars'] > 0, results))
         json = filtered_results[0] if len(filtered_results) > 0 else results[0]
-        del json['versions']
-        del json['normalized_licenses']
-        del json['keywords']
-        del json['latest_stable_release']
         return json
 
     def get_dependencies(self, obj):
@@ -263,15 +259,12 @@ def get_edge_trace(x, y, linecolor='rgb(210,210,210)', linewidth=1):
 
 def get_package_tooltip(obj):
     tool_tip = obj['name']
-    try:
-        js = obj['version']
-        name = "<B>Name:</B> {name}<BR>".format(name=obj['name']) if 'name' in obj else ""
-        version = "<B>Version:</B> {version}<BR>".format(version=js['number']) if 'number' in js else ""
-        lic = "<B>License:</B> {license}<BR>".format(license=js['original_license']) if 'original_license' in js else ""
-        updated = "<B>Updated:</B> {updated}<BR>".format(updated=js['updated_at']) if 'updated_at' in js else ""
-        tool_tip = name + version + lic + updated
-    except Exception as e:
-        print(e)
+    js = obj['latest_stable_release'] if 'latest_stable_release' in obj else obj['version']
+    name = "<B>Name:</B> {name}<BR>".format(name=obj['name']) if 'name' in obj else ""
+    version = "<B>Version:</B> {version}<BR>".format(version=js['number']) if 'number' in js else ""
+    lic = "<B>License:</B> {license}<BR>".format(license=js['original_license']) if 'original_license' in js else ""
+    updated = "<B>Updated:</B> {updated}<BR>".format(updated=js['updated_at']) if 'updated_at' in js else ""
+    tool_tip = name + version + lic + updated
     return tool_tip
 
 def generate_dependency_graph(selected_packages):
@@ -340,7 +333,7 @@ def generate_dependency_graph(selected_packages):
                 x=[ig_layout[0][0]],
                 y=[ig_layout[0][1]],
                 marker=dict(size=10, color=palette[i]),
-                text=[package_name],
+                text=[get_package_tooltip(package)],
                 hoverinfo='text')
         #trace1 = get_edge_trace(Xe, Ye)
         trace2 = get_node_trace(Xn, Yn, marker_size=5, marker_color=palette[i], 
