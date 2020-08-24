@@ -46,6 +46,7 @@ class Libraries:
 
         return
     
+    # checks for local api key first, then uses heroku env var if not found
     def load_api_key(self):
         if 'API_KEY' in os.environ:
             self.api_key = os.environ['API_KEY']
