@@ -553,10 +553,6 @@ def update_measure_checklist(selected, select_options, checked):
     ],
 )
 
-# columns is flat, instead need to get_dimensions fn
-# need difference between column names and column values
-# need to look up how to find data table how to setup different labels for columns
-# tooltip for the columns would also be a nice to have
 def update_packages_table(selected_packages):
     columns = [
         'name',
