@@ -16,11 +16,11 @@ body {
 }
 
 .banner {
-  height: 5rem;
+  height: 6rem;
   margin-bottom: 1rem;
   padding: 0rem 5rem 0rem;
-  display: flex;
-  flex-direction: row nowrap;
+  /*display: flex;
+  flex-direction: row nowrap;*/
   align-items: center;
   justify-content: space-between;
 }
@@ -30,6 +30,11 @@ body {
   font-weight: 600;
   line-height: 1;
   text-transform: uppercase;
+}
+
+.banner p {
+  font-weight: 100;
+  font-size: 16px;
 }
 
 .banner Img {
@@ -122,6 +127,16 @@ span.Select-clear-zone {
 
 #parallel-coordinates-outer {
   height: 60;
+}
+
+#parallel-coordinates-outer p {
+  font-weight: 100;
+  font-size: 16px;
+}
+
+#parallel-coordinates-outer h6 {
+  font-weight: 600;
+  font-size: 22px;
 }
 
 #parallel-coordinates {

@@ -388,6 +388,7 @@ app.layout = html.Div(
             className='banner',
             children=[
                 html.H6('Package Evaluation Dashboard'),
+                html.P('Enabling Package Examination and Comparison for What Open Source Developers Care About')
             ],
         ),
         html.Div(id='upper-container',
@@ -442,7 +443,8 @@ app.layout = html.Div(
                     id='parallel-coordinates-outer',
                     className='twelve columns',
                     children=[
-                        html.P('Package comparison'),
+                        html.H6('Parallel Coordinates Plot for Comparison of Package Measures'),
+                        html.P('Measures for each package are represented vertically higher on the chart the better they are'),
                         html.Div(
                             id='parallel-coordinates-loading-outer',
                             children=[
@@ -473,7 +475,7 @@ app.layout = html.Div(
                                 children=[
                                 html.P(
                                     className='chart-title',
-                                    children='Dependency graphs',
+                                    children='Radial Tree Dependency Graphs',
                                 ),
                                 html.Div(
                                     id='dependency-graph-container',
@@ -550,6 +552,7 @@ def update_measure_checklist(selected, select_options, checked):
         Input('package-select', 'value'),
     ],
 )
+
 def update_packages_table(selected_packages):
     columns = [
         'name',
