@@ -10,26 +10,37 @@ A live demo is available at [http://package-eval.herokuapp.com/](http://package-
 
 ## How to run this app locally
 
-To run this app locally, clone this repository and open this app folder in your terminal/Command Prompt. We suggest you to create a virtual environment for installation of required packages for this app.
+To run this app locally, clone this repository and open this app folder in your terminal/Command Prompt. 
 
-Get an API key from [https://libraries.io/account](https://libraries.io/account) and place the key at the root of the folder with filename api.txt. 
+Get an API key from [https://libraries.io/account](https://libraries.io/account) and place the key at the root of the folder with filename api.txt. This file should contain only the key and not any trailing newline characters.
+
+We suggest you to create a virtual environment for installation of the required packages for this app.
 
 ```
 cd packge-eval
 pip3 install -U pip virtualenv
-py -3 -m venv venv
+python3 -m venv venv
 ```
-In Unix System:
+
+Once the virtual environment is created, you need to _activate_ it.
+
+On macOS or a Unix systems:
+
 ```
 source venv/bin/activate
 
 ```
 
-In Windows: 
+On Windows: 
 
 ```
 venv\Scripts\activate
 ```
+
+For more information about Python virtual environments, see the Python
+documentation:
+
+https://docs.python.org/3/library/venv.html
 
 Install all required packages by running:
 ```
